@@ -16,18 +16,18 @@ def add_layer(inputs, in_size, out_size, n_layer, activation_function=None):  # 
     with tf.name_scope(layer_name):
         with tf.name_scope('weights'):
             Weights = tf.Variable(tf.random_normal([in_size, out_size]))  # Weight中都是随机变量
-            tf.histogram_summary(layer_name + "/weights", Weights)  # 可视化观看变量
+            tf.summary.histogram(layer_name + "/weights", Weights)  # 可视化观看变量
         with tf.name_scope('biases'):
             biases = tf.Variable(tf.zeros([1, out_size]) + 0.1)  # biases推荐初始值不为0
-            tf.histogram_summary(layer_name + "/biases", biases)  # 可视化观看变量
+            tf.summary.histogram(layer_name + "/biases", biases)  # 可视化观看变量
         with tf.name_scope('Wx_plus_b'):
             Wx_plus_b = tf.matmul(inputs, Weights) + biases  # inputs*Weight+biases
-            tf.histogram_summary(layer_name + "/Wx_plus_b", Wx_plus_b)  # 可视化观看变量
+            tf.summary.histogram(layer_name + "/Wx_plus_b", Wx_plus_b)  # 可视化观看变量
         if activation_function is None:
             outputs = Wx_plus_b
         else:
             outputs = activation_function(Wx_plus_b)
-        tf.histogram_summary(layer_name + "/outputs", outputs)  # 可视化观看变量
+        tf.summary.histogram(layer_name + "/outputs", outputs)  # 可视化观看变量
         return outputs
 
         # 创建数据x_data，y_data
@@ -49,16 +49,16 @@ prediction = add_layer(l1, 10, 1, n_layer=2, activation_function=None)  # 输出
 with tf.name_scope('loss'):
     loss = tf.reduce_mean(
         tf.reduce_sum(tf.square(ys - prediction), reduction_indices=[1]))  # square()平方,sum()求和,mean()平均值
-    tf.scalar_summary('loss', loss)  # 可视化观看常量
+    tf.summary.scalar('loss', loss)  # 可视化观看常量
 with tf.name_scope('train'):
     train_step = tf.train.GradientDescentOptimizer(0.1).minimize(loss)  # 0.1学习效率,minimize(loss)减小loss误差
 
 init = tf.initialize_all_variables()
 sess = tf.Session()
 # 合并到Summary中
-merged = tf.merge_all_summaries()
+merged = tf.summary.merge_all()
 # 选定可视化存储目录
-writer = tf.train.SummaryWriter("Desktop/", sess.graph)
+writer = tf.summary.FileWriter("Desktop/", sess.graph)
 sess.run(init)  # 先执行init
 
 # 训练1k次
