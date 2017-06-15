@@ -70,7 +70,7 @@ cost = tf.reduce_sum(tf.pow(activation - Y, 2)) / (2 * n_samples)  # L2 loss
 optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(cost)  # Gradient descent
 
 # Initializing the variables
-init = tf.initialize_all_variables()
+init = tf.global_variables_initializer()
 
 # Launch the graph
 with tf.Session() as sess:
