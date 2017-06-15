@@ -12,6 +12,7 @@
 
 import tensorflow as tf
 import matplotlib.pyplot as plt
+import numpy  
 
 hello = tf.constant('Hello, TensorFlow!')
 sess = tf.Session()
@@ -30,7 +31,7 @@ with tf.Session() as sess:
 a = tf.placeholder(tf.int16)
 b = tf.placeholder(tf.int16)
 add = tf.add(a, b)
-mul = tf.mul(a, b)
+mul = tf.multiply(a, b)
 with tf.Session() as sess:
     # Run every operation with variable input
     print "Addition with variables: %i" % sess.run(add, feed_dict={a: 2, b: 3})
@@ -62,7 +63,7 @@ W = tf.Variable(rng.randn(), name="weight")
 b = tf.Variable(rng.randn(), name="bias")
 
 # Construct a linear model
-activation = tf.add(tf.mul(X, W), b)
+activation = tf.add(tf.multiply(X, W), b)
 
 # Minimize the squared errors
 cost = tf.reduce_sum(tf.pow(activation - Y, 2)) / (2 * n_samples)  # L2 loss
