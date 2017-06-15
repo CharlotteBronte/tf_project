@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 """
-@desc:  tensor flow加载张量，配置和图
+@desc:  tensor flow加载张量，会话和图
 @time:   2017/06/13 05：19
 @author: lucy(0_0mirror@sina.com)
 @param: 
