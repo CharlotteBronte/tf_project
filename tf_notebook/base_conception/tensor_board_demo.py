@@ -2,30 +2,15 @@
 # -*- coding: UTF-8 -*-
 """
 @desc:  tensor board的基础使用
-@time:   2017/06/15 05：19
-@author: lucy(0_0mirror@sina.com)
-@param:
-@output:
-"""
-# Copyright 2015 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the 'License');
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an 'AS IS' BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-"""A simple MNIST classifier which displays summaries in TensorBoard.
+A simple MNIST classifier which displays summaries in TensorBoard.
  This is an unimpressive MNIST model, but it is a good example of using
 tf.name_scope to make a graph legible in the TensorBoard graph explorer, and of
 naming summary tags so that they are grouped meaningfully in TensorBoard.
 It demonstrates the functionality of every TensorBoard dashboard.
+@time:   2017/06/15 05：19
+@author: lucy(0_0mirror@sina.com)
+@param:
+@output:
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -63,7 +48,8 @@ def train():
 
   with tf.name_scope('input_reshape'):
     image_shaped_input = tf.reshape(x, [-1, 28, 28, 1])
-    tf.image_summary('input', image_shaped_input, 10)
+    #1.0 update: tf.image_summary(tag, tensor, max_images=3, collections=None, name=None) ==> tf.summary.image(name, tensor, max_outputs=3, collections=None)
+    tf.summary.image('input', image_shaped_input, 10)
 
   # We can't initialize these variables to 0 - the network will get stuck.
   def weight_variable(shape):
@@ -80,13 +66,13 @@ def train():
     """Attach a lot of summaries to a Tensor."""
     with tf.name_scope('summaries'):
       mean = tf.reduce_mean(var)
-      tf.scalar_summary('mean/' + name, mean)
+      tf.summary.scalar('mean/' + name, mean)
       with tf.name_scope('stddev'):
         stddev = tf.sqrt(tf.reduce_sum(tf.square(var - mean)))
-      tf.scalar_summary('sttdev/' + name, stddev)
-      tf.scalar_summary('max/' + name, tf.reduce_max(var))
-      tf.scalar_summary('min/' + name, tf.reduce_min(var))
-      tf.histogram_summary(name, var)
+      tf.summary.scalar('sttdev/' + name, stddev)
+      tf.summary.scalar('max/' + name, tf.reduce_max(var))
+      tf.summary.scalar('min/' + name, tf.reduce_min(var))
+      tf.summary.histogram(name, var)
 
   def nn_layer(input_tensor, input_dim, output_dim, layer_name, act=tf.nn.relu):
     """Reusable code for making a simple neural net layer.
@@ -105,16 +91,16 @@ def train():
         variable_summaries(biases, layer_name + '/biases')
       with tf.name_scope('Wx_plus_b'):
         preactivate = tf.matmul(input_tensor, weights) + biases
-        tf.histogram_summary(layer_name + '/pre_activations', preactivate)
+        tf.summary.histogram(layer_name + '/pre_activations', preactivate)
       activations = act(preactivate, 'activation')
-      tf.histogram_summary(layer_name + '/activations', activations)
+      tf.summary.histogram(layer_name + '/activations', activations)
       return activations
 
   hidden1 = nn_layer(x, 784, 500, 'layer1')
 
   with tf.name_scope('dropout'):
     keep_prob = tf.placeholder(tf.float32)
-    tf.scalar_summary('dropout_keep_probability', keep_prob)
+    tf.summary.scalar('dropout_keep_probability', keep_prob)
     dropped = tf.nn.dropout(hidden1, keep_prob)
 
   y = nn_layer(dropped, 500, 10, 'layer2', act=tf.nn.softmax)
@@ -123,7 +109,7 @@ def train():
     diff = y_ * tf.log(y)
     with tf.name_scope('total'):
       cross_entropy = -tf.reduce_mean(diff)
-    tf.scalar_summary('cross entropy', cross_entropy)
+    tf.summary.scalar('cross entropy', cross_entropy)
 
   with tf.name_scope('train'):
     train_step = tf.train.AdamOptimizer(FLAGS.learning_rate).minimize(
@@ -134,7 +120,7 @@ def train():
       correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     with tf.name_scope('accuracy'):
       accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-    tf.scalar_summary('accuracy', accuracy)
+    tf.summary.scalar('accuracy', accuracy)
 
   # Merge all the summaries and write them out to /tmp/mnist_logs (by default)
   merged = tf.merge_all_summaries()
