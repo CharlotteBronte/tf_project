@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 """
-@desc:  tensor board的基础使用
+@desc:  tensor board的可以查看图的例子
 A simple MNIST classifier which displays summaries in TensorBoard.
  This is an unimpressive MNIST model, but it is a good example of using
 tf.name_scope to make a graph legible in the TensorBoard graph explorer, and of
