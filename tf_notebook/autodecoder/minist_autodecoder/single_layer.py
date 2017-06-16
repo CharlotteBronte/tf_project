@@ -70,3 +70,30 @@ with tf.Graph().as_default():
     # 所以下面的记录必须放在上下文里面，否则记录下来的图是空的（get不到上面的default）
     writer = tf.summary.FileWriter(logdir='logs', graph=tf.get_default_graph())
     writer.flush()
+
+    mnist = input_data.read_data_sets('../Mnist_data/', one_hot=True)
+
+    with tf.Session() as sess:
+        sess.run(init)
+        total_batch = int(mnist.train.num_examples / batch_size)
+        for epoch in range(training_epochs):
+            for i in range(total_batch):
+                batch_xs, batch_ys = mnist.train.next_batch(batch_size)
+                _, Loss = sess.run([train, loss], feed_dict={X_input: batch_xs})
+                Loss = sess.run(loss, feed_dict={X_input: batch_xs})
+            if epoch % display_step == 0:
+                print('Epoch: %04d' % (epoch + 1), 'loss= ', '{:.9f}'.format(Loss))
+        writer.close()
+        print('训练完毕！')
+
+        '''比较输入和输出的图像'''
+        # 输出图像获取
+        reconstructions = sess.run(X_decode, feed_dict={X_input: mnist.test.images[:example_to_show]})
+        # 画布建立
+        f, a = plt.subplots(2, 10, figsize=(10, 2))
+        for i in range(example_to_show):
+            a[0][i].imshow(np.reshape(mnist.test.images[i], (28, 28)))
+            a[1][i].imshow(np.reshape(reconstructions[i], (28, 28)))
+        f.show()  # 渲染图像
+        plt.draw()  # 刷新图像
+        # plt.waitforbuttonpress()
