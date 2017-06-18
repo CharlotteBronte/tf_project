@@ -28,3 +28,4 @@ with tf.Session(graph = g2) as sess:
         print(sess.run(tf.get_variable("v")))
 
 
+#测试随机数
