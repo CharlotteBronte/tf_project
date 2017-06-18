@@ -42,7 +42,7 @@ rng = numpy.random
 
 # Parameters
 learning_rate = 0.01
-training_epochs = 2000
+training_epochs = 100
 display_step = 50
 
 # Training Data
