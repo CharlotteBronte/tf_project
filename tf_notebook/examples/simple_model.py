@@ -96,3 +96,11 @@ def train(mnist):
 
         test_acc = sess.run(accuracy, feed_dict=test_feed)
         print(("After %d training step(s), test accuracy using average model is %g" % (TRAINING_STEPS, test_acc)))
+
+#主程序入口，设置模型的训练次数
+def main(argv=None):
+    mnist = input_data.read_data_sets("../../../datasets/MNIST_data", one_hot=True)
+    train(mnist)
+
+if __name__=='__main__':
+    main()
