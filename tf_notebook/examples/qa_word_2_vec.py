@@ -1,8 +1,8 @@
 #!/usr/bin/python
 # -*- coding: UTF-8 -*-
 """
-@desc:   简单的skip-gram模型实现的word2vec
-@time:   2017/06/19 20：48
+@desc:  解析了qa数据的word2vec 
+@time:  2017/06/28 20：48
 @author: liuluxin(0_0mirror@sina.com)
 @param:
 @param:
@@ -23,8 +23,15 @@ from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 
-# Step 1: Download the data.
-url = 'http://mattmahoney.net/dc/'
+'''
+@desc: 数据预处理，去掉不必要的标点符号,把低频词替换为UNK
+'''
+def pre_process(filename,word_split,line_split,freq>2):
+    raw_text = open(filename).readline().strip()
+    raw_text = raw_text.lower() 
+    
+    
+    
 
 
 def maybe_download(filename, expected_bytes):

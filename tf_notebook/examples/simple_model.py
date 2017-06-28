@@ -29,12 +29,18 @@ MOVING_AVERAGE_DECAY = 0.99
 def inference(input_tensor, avg_class, weights1, biases1, weights2, biases2):
     # 不使用滑动平均类
     if avg_class == None:
+        #--使用激活函数
         layer1 = tf.nn.relu(tf.matmul(input_tensor, weights1) + biases1)
+        #--不使用激活函数
+        #layer1 = tf.matmul(input_tensor, weights1) + biases1
         return tf.matmul(layer1, weights2) + biases2
 
     else:
         # 使用滑动平均类
+        #--使用激活函数
         layer1 = tf.nn.relu(tf.matmul(input_tensor, avg_class.average(weights1)) + avg_class.average(biases1))
+        #--不使用激活函数
+        #layer1 = tf.matmul(input_tensor, avg_class.average(weights1)) + avg_class.average(biases1)
         return tf.matmul(layer1, avg_class.average(weights2)) + avg_class.average(biases2)
 
 #定义训练过程
@@ -51,16 +57,20 @@ def train(mnist):
     y = inference(x, None, weights1, biases1, weights2, biases2)
  # 定义训练轮数及相关的滑动平均类
     global_step = tf.Variable(0, trainable=False)
+    #--使用bp时候的滑动平均
     variable_averages = tf.train.ExponentialMovingAverage(MOVING_AVERAGE_DECAY, global_step)
     variables_averages_op = variable_averages.apply(tf.trainable_variables())
     average_y = inference(x, variable_averages, weights1, biases1, weights2, biases2)
 # 计算交叉熵及其平均值
-    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(y, tf.argmax(y_, 1))
+    cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=y, labels=tf.argmax(y_, 1))
     cross_entropy_mean = tf.reduce_mean(cross_entropy)
 # 损失函数的计算
     regularizer = tf.contrib.layers.l2_regularizer(REGULARAZTION_RATE)
     regularaztion = regularizer(weights1) + regularizer(weights2)
+    #--使用正则化
     loss = cross_entropy_mean + regularaztion
+    #--不使用正则化
+    #loss = cross_entropy_mean
 # 设置指数衰减的学习率。
     learning_rate = tf.train.exponential_decay(
         LEARNING_RATE_BASE,
@@ -68,15 +78,20 @@ def train(mnist):
         mnist.train.num_examples / BATCH_SIZE,
         LEARNING_RATE_DECAY,
         staircase=True)
-    # 优化损失函数
-    train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
+    #--使用指数衰减
+    #train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss, global_step=global_step)
+    #--不使用指数衰减
+    train_step = tf.train.GradientDescentOptimizer(LEARNING_RATE_BASE).minimize(loss, global_step=global_step)
 
     # 反向传播更新参数和更新每一个参数的滑动平均值
     with tf.control_dependencies([train_step, variables_averages_op]):
         train_op = tf.no_op(name='train')
 
     # 计算正确率
+    #--使用滑动平均
     correct_prediction = tf.equal(tf.argmax(average_y, 1), tf.argmax(y_, 1))
+    #--不使用滑动平均
+    #correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
     accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
     # 初始化回话并开始训练过程。
