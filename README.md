@@ -1,4 +1,6 @@
 # tf_project
 所有的tensorflow相关项目
-[music_aotuencoder]
-音乐的自编码器相关，目标是实现歌词的情感分类等
+[music]
+音乐相关实践
+[text]
+文本相关实践
