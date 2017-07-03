@@ -28,16 +28,16 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 import ConfigParser
 
-line_split = ""
-qa_split = ""
-word_split = ""
+line_split = ""
+qa_split = ""
+word_split = ""
 config_file = "/word_embedding.conf"
 
 '''
 @desc: 得到路径配置
 @format: [word2vec] train_data=xxxx
 '''
-def getConfig(section, key):
+def get_config(section, key):
     config = ConfigParser.ConfigParser()
     path = os.path.split(os.path.realpath(__file__))[0] + config_file
     config.read(path)
@@ -49,7 +49,7 @@ def getConfig(section, key):
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
 def build_dict(freq=5, del_threshold=1e-5):
-    raw_words = open(getConfig("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+    raw_words = open(get_config("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
     word_counts = Counter(raw_words)
     # 计算总词频
     total_count = len(raw_words)
@@ -69,6 +69,13 @@ def build_dict(freq=5, del_threshold=1e-5):
 
 dictionary, reverse_dictionary = build_dict(vocabulary, vocabulary_size)
 
+
+'''
+@desc: 从一行的qa数据中得到
+'''
+def get_line_batch(line, num_skips, skip_window):
+    raw_words = open(getConfig("word2vec", "train_data")).readline()
+
 '''
 @desc: 每次调用从每行中随机产生batch数据
 @param: batch_size: 每次扫描的块的大小，
@@ -76,6 +83,7 @@ dictionary, reverse_dictionary = build_dict(vocabulary, vocabulary_size)
         skip_window: 采样词的左右窗口大小（即决定了进行几gram的采样)skip_windows*2=num_skips
 '''
 def generate_batch(batch_size, num_skips, skip_window):
+
     global data_index
     assert batch_size % num_skips == 0
     assert num_skips <= 2 * skip_window
@@ -112,7 +120,52 @@ for i in range(8):
     print(batch[i], reverse_dictionary[batch[i]],
           '->', labels[i, 0], reverse_dictionary[labels[i, 0]])
 
-# Step 4: Build and train a skip-gram model.
+
+'''
+@desc: 保存模型到配置路径
+'''
+def save_model():
+    save_path = get_config("word2vec","model_path")
+    if os.path.isfile(save_path):
+        raise RuntimeError('the save path should be a dir')
+    if not os.path.exists(save_path):
+        os.mkdir(save_path)
+# 记录模型各参数
+        model = {}
+        var_names = ['vocab_size',      # int       model parameters
+                     'vocab_list',      # list
+                     'learning_rate',   # int
+                     'word2id',         # dict
+                     'embedding_size',  # int
+                     'logdir',          # str
+                     'win_len',         # int
+                     'num_sampled',     # int
+                     'train_words_num', # int       train info
+                     'train_sents_num', # int
+                     'train_times_num', # int
+                     'train_loss_records',  # int   train loss
+                     'train_loss_k10',  # int
+                     ]
+        for var in var_names:
+            model[var] = eval('self.'+var)
+
+        param_path = os.path.join(save_path,'params.pkl')
+        if os.path.exists(param_path):
+            os.remove(param_path)
+        with open(param_path,'wb') as f:
+            pkl.dump(model,f)
+
+        # 记录tf模型
+        tf_path = os.path.join(save_path,'tf_vars')
+        if os.path.exists(tf_path):
+            os.remove(tf_path)
+        self.saver.save(self.sess,tf_path)
+
+
+'''
+@desc: 从配置路径读取模型
+'''
+def load_model():
 
 batch_size = 128
 embedding_size = 128  # Dimension of the embedding vector.
