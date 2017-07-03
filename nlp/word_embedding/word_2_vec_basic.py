@@ -26,21 +26,29 @@ import numpy as np
 from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
+import ConfigParser
 
 line_split = ""
 qa_split = ""
 word_split = ""
-root_dir = ""
-file_dir = root_dir + "seg_data"
+config_file = "/word_embedding.conf"
+
+'''
+@desc: 得到路径配置
+'''
+def getConfig(section, key):
+    config = ConfigParser.ConfigParser()
+    path = os.path.split(os.path.realpath(__file__))[0] + config_file
+    config.read(path)
+    return config.get(section, key)
 
 '''
 @desc: 从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
-@param: file_name :输入文件
-        freq:小于freq次数的词都会被删除
+@param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
-def build_dict(file_name, freq=5, del_threshold=1e-5):
-    raw_words = open(file_name).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+def build_dict(freq=5, del_threshold=1e-5):
+    raw_words = open(getConfig("train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
     word_counts = Counter(raw_words)
     # 计算总词频
     total_count = len(raw_words)
