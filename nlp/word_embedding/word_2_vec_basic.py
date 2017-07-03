@@ -35,6 +35,7 @@ config_file = "/word_embedding.conf"
 
 '''
 @desc: 得到路径配置
+@format: [word2vec] train_data=xxxx
 '''
 def getConfig(section, key):
     config = ConfigParser.ConfigParser()
@@ -48,7 +49,7 @@ def getConfig(section, key):
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
 def build_dict(freq=5, del_threshold=1e-5):
-    raw_words = open(getConfig("train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+    raw_words = open(getConfig("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
     word_counts = Counter(raw_words)
     # 计算总词频
     total_count = len(raw_words)
@@ -67,8 +68,6 @@ def build_dict(freq=5, del_threshold=1e-5):
     return vocab_2_idx, idx_2_vocab
 
 dictionary, reverse_dictionary = build_dict(vocabulary, vocabulary_size)
-
-data_index = 0
 
 '''
 @desc: 每次调用从每行中随机产生batch数据
