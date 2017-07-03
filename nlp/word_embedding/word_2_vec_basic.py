@@ -26,11 +26,21 @@ from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 line_split=""
-word_split=""
+qa_split = ""
+word_split=""
 
 # Step 2: Build the dictionary and replace rare words with UNK token.
 vocabulary_size = 5000
 
+#从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
+def read_raw_data(file_name, freq=5, del_threshold=1e-5):
+  raw_words = open(file_name).replace('','').replace('','').split('') 
+  word_counts = Counter(raw_words)      
+  #计算总词频
+  total_count = len(raw_words)
+  word_freqs = 
+  trimmed_words = [word for word in raw_words[word]>freq]
+  
 
 def build_dataset(words, n_words):
   """Process raw inputs into a dataset."""
