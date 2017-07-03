@@ -1,4 +1,4 @@
-#/usr/bin/python
+#!/usr/bin/python
 # -*- coding: UTF-8 -*-
 """
 @desc:   简单的skip-gram模型实现的word2vec
@@ -14,47 +14,22 @@ from __future__ import print_function
 
 import collections
 import math
-import os
+import sys,os
 import random
 import zipfile
+import sys 
+reload(sys)
+sys.setdefaultencoding("utf-8")
 
 import numpy as np
 from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
-
-# Step 1: Download the data.
-url = 'http://mattmahoney.net/dc/'
-
-
-def maybe_download(filename, expected_bytes):
-  """Download a file if not present, and make sure it's the right size."""
-  if not os.path.exists(filename):
-    filename, _ = urllib.request.urlretrieve(url + filename, filename)
-  statinfo = os.stat(filename)
-  if statinfo.st_size == expected_bytes:
-    print('Found and verified', filename)
-  else:
-    print(statinfo.st_size)
-    raise Exception(
-        'Failed to verify ' + filename + '. Can you get to it with a browser?')
-  return filename
-
-filename = maybe_download('text8.zip', 31344016)
-
-
-# Read the data into a list of strings.
-def read_data(filename):
-  """Extract the first file enclosed in a zip file as a list of words."""
-  with zipfile.ZipFile(filename) as f:
-    data = tf.compat.as_str(f.read(f.namelist()[0])).split()
-  return data
-
-vocabulary = read_data(filename)
-print('Data size', len(vocabulary))
+line_split=""
+word_split=""
 
 # Step 2: Build the dictionary and replace rare words with UNK token.
-vocabulary_size = 50000
+vocabulary_size = 5000
 
 
 def build_dataset(words, n_words):
@@ -77,6 +52,7 @@ def build_dataset(words, n_words):
   reversed_dictionary = dict(zip(dictionary.values(), dictionary.keys()))
   return data, count, dictionary, reversed_dictionary
 
+vocabulary = open(sys.argv[1].strip()).readline().split(word_split)
 data, count, dictionary, reverse_dictionary = build_dataset(vocabulary,
                                                             vocabulary_size)
 del vocabulary  # Hint to reduce memory.
@@ -146,7 +122,7 @@ with graph.as_default():
   valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
 
   # Ops and variables pinned to the CPU because of missing GPU implementation
-  with tf.device('/cpu:0'):
+  with tf.device('/gpu:0'):
     # Look up embeddings for inputs.
     embeddings = tf.Variable(
         tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
@@ -184,12 +160,14 @@ with graph.as_default():
   init = tf.global_variables_initializer()
 
 # Step 5: Begin training.
-num_steps = 100001
+#num_steps = 100001
+num_steps = 500 
+saver = tf.train.Saver()
 with tf.Session(graph=graph) as session:
   # We must initialize all variables before we use them.
   init.run()
   print('Initialized')
-
+  tf.scalar_summary('average_loss',average_loss)  
   average_loss = 0
   for step in xrange(num_steps):
     batch_inputs, batch_labels = generate_batch(
@@ -221,25 +199,25 @@ with tf.Session(graph=graph) as session:
           log_str = '%s %s,' % (log_str, close_word)
         print(log_str)
   final_embeddings = normalized_embeddings.eval()
+  saver.save(sess, "model/zh_lyric_vec.model")
 
-# Step 6: Visualize the embeddings.
 
-
-def plot_with_labels(low_dim_embs, labels, filename='tsne.png'):
+#可视化
+def plot_with_labels(low_dim_embs, labels, filename='lyric_word_vec.png'):
   assert low_dim_embs.shape[0] >= len(labels), 'More labels than embeddings'
-  plt.figure(figsize=(18, 18))  # in inches
+  plt.figure()  # in inches
   for i, label in enumerate(labels):
     x, y = low_dim_embs[i, :]
     plt.scatter(x, y)
-    plt.annotate(label,
+    plt.annotate(label.encode("utf-8"),
                  xy=(x, y),
                  xytext=(5, 2),
                  textcoords='offset points',
                  ha='right',
-                 va='bottom')
+                 va='bottom', fontproperties=myfont)
 
   plt.savefig(filename)
-  file = open('tsne.png', 'rb')
+  file = open('lyric_word_vec.png', 'rb')
   data = file.read()
   file.close()
   # 图片处理
@@ -257,7 +235,6 @@ def plot_with_labels(low_dim_embs, labels, filename='tsne.png'):
 
   # 关闭
   writer.close()
-  sess.close()
 
 
 try:
@@ -265,7 +242,10 @@ try:
   from sklearn.manifold import TSNE
   import matplotlib as mpl
   mpl.use('Agg')
+  from matplotlib.font_manager import *  
   import matplotlib.pyplot as plt
+  myfont = FontProperties(fname="//data01/ai_rd/anaconda2/lib/python2.7/site-packages/matplotlib/mpl-data/fonts/ttf/msyh.ttf")
+  tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
 
   tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
   plot_only = 500
