@@ -31,7 +31,7 @@ import ConfigParser
 line_split = ""
 qa_split = ""
 word_split = ""
-config_file = "/word_embedding.conf"
+config_file = "/word_embedding.ini"
 
 '''
 @desc: 得到路径配置
