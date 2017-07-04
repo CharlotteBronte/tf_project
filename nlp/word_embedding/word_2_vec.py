@@ -44,6 +44,17 @@ def get_config(section, key):
     return config.get(section, key)
 
 '''
+@desc: 得到路径配置
+@format: [word2vec] train_data=xxxx
+'''
+def get_config_int(section, key):
+    config = ConfigParser.ConfigParser()
+    path = os.path.split(os.path.realpath(__file__))[0] + config_file
+    config.read(path)
+    return config.get_int(section, key)
+
+
+'''
 @desc: 从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
 @param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
@@ -71,19 +82,12 @@ dictionary, reverse_dictionary = build_dict(vocabulary, vocabulary_size)
 
 
 '''
-@desc: 从一行的qa数据中得到
-'''
-def get_line_batch(line, num_skips, skip_window):
-    raw_words = open(getConfig("word2vec", "train_data")).readline()
-
-'''
 @desc: 每次调用从每行中随机产生batch数据
 @param: batch_size: 每次扫描的块的大小，
         num_skips:每个词的重用次数，取决于window的大小
         skip_window: 采样词的左右窗口大小（即决定了进行几gram的采样)skip_windows*2=num_skips
 '''
 def generate_batch(batch_size, num_skips, skip_window):
-
     global data_index
     assert batch_size % num_skips == 0
     assert num_skips <= 2 * skip_window
@@ -130,55 +134,20 @@ def save_model():
         raise RuntimeError('the save path should be a dir')
     if not os.path.exists(save_path):
         os.mkdir(save_path)
-# 记录模型各参数
-        model = {}
-        var_names = ['vocab_size',      # int       model parameters
-                     'vocab_list',      # list
-                     'learning_rate',   # int
-                     'word2id',         # dict
-                     'embedding_size',  # int
-                     'logdir',          # str
-                     'win_len',         # int
-                     'num_sampled',     # int
-                     'train_words_num', # int       train info
-                     'train_sents_num', # int
-                     'train_times_num', # int
-                     'train_loss_records',  # int   train loss
-                     'train_loss_k10',  # int
-                     ]
-        for var in var_names:
-            model[var] = eval('self.'+var)
-
-        param_path = os.path.join(save_path,'params.pkl')
-        if os.path.exists(param_path):
-            os.remove(param_path)
-        with open(param_path,'wb') as f:
-            pkl.dump(model,f)
-
-        # 记录tf模型
-        tf_path = os.path.join(save_path,'tf_vars')
-        if os.path.exists(tf_path):
-            os.remove(tf_path)
         self.saver.save(self.sess,tf_path)
 
 
-'''
-@desc: 从配置路径读取模型
-'''
-def load_model():
 
-batch_size = 128
-embedding_size = 128  # Dimension of the embedding vector.
-skip_window = 1  # How many words to consider left and right.
-num_skips = 2  # How many times to reuse an input to generate a label.
+batch_size = get_config_int("word2vec","batch_size")
+embedding_size = get_config_int("word2vec","embedding_size")  # Dimension of the embedding vector.
+skip_window = get_config_int("word2vec","skip_window")  # How many words to consider left and right.
+num_skips = get_config_int("word2vec","num_skips")  # How many times to reuse an input to generate a label.
 
-# We pick a random validation set to sample nearest neighbors. Here we limit the
-# validation samples to the words that have a low numeric ID, which by
-# construction are also the most frequent.
-valid_size = 16  # Random set of words to evaluate similarity on.
-valid_window = 100  # Only pick dev samples in the head of the distribution.
+
+valid_size = get_config_int("word2vec","valid_size")  # Random set of words to evaluate similarity on.
+valid_window = get_config_int("word2vec","valid_window")  # Only pick dev samples in the head of the distribution.
 valid_examples = np.random.choice(valid_window, valid_size, replace=False)
-num_sampled = 64  # Number of negative examples to sample.
+num_sampled = get_config_int("word2vec","num_sampled")   # Number of negative examples to sample.
 
 graph = tf.Graph()
 
@@ -192,14 +161,14 @@ with graph.as_default():
     with tf.device('/gpu:0'):
         # Look up embeddings for inputs.
         embeddings = tf.Variable(
-            tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0))
+            tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0),name="embeddings")
         embed = tf.nn.embedding_lookup(embeddings, train_inputs)
 
         # Construct the variables for the NCE loss
         nce_weights = tf.Variable(
             tf.truncated_normal([vocabulary_size, embedding_size],
-                                stddev=1.0 / math.sqrt(embedding_size)))
-        nce_biases = tf.Variable(tf.zeros([vocabulary_size]))
+                                stddev=1.0 / math.sqrt(embedding_size)), name="nec_weight")
+        nce_biases = tf.Variable(tf.zeros([vocabulary_size]),name="nce_biases")
 
     # Compute the average NCE loss for the batch.
     # tf.nce_loss automatically draws a new sample of the negative labels each
@@ -222,39 +191,55 @@ with graph.as_default():
         normalized_embeddings, valid_dataset)
     similarity = tf.matmul(
         valid_embeddings, normalized_embeddings, transpose_b=True)
+    merged_summary_op = tf.merge_all_summaries()
 
     # Add variable initializer.
-    init = tf.global_variables_initializer()
 
-# Step 5: Begin training.
-# num_steps = 100001
-num_steps = 500
+
+'''
+正式训练流程
+'''
+num_steps = get_config_int("word2vec", "num_steps")
+#初始化所有数据和存储
 saver = tf.train.Saver()
+log_dir =  get_config("word2vec","word2vec_log")
+print('Begin Training')
 with tf.Session(graph=graph) as session:
-    # We must initialize all variables before we use them.
-    init.run()
-    print('Initialized')
-    tf.scalar_summary('average_loss', average_loss)
+    model_path = get_config("word2vec","model_path")
+    # 存在就从模型中恢复变量
+    if os.path.exists(model_path):
+        saver.restore(sess, model_path)
+    # 不存在就初始化变量
+    else:
+        init = tf.global_variables_initializer()
+        sess.run(init)
+    summary_writer = tf.train.SummaryWriter(log_dir, session.graph)
+
+
     average_loss = 0
     for step in xrange(num_steps):
         batch_inputs, batch_labels = generate_batch(
             batch_size, num_skips, skip_window)
         feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
-
-        # We perform one update step by evaluating the optimizer op (including it
-        # in the list of returned values for session.run()
+        tf.scalar_summary('loss', loss_val)
         _, loss_val = session.run([optimizer, loss], feed_dict=feed_dict)
         average_loss += loss_val
 
-        if step % 2000 == 0:
+        # 每隔100次迭代，保存一次日志
+        summary_str = session.run(merged_summary_op)
+        summary_writer.add_summary(summary_str, step)
+
+        # 每2000次迭代输出一次损失 保存一次模型
+        if step % get_config_int == 0:
             if step > 0:
                 average_loss /= 2000
-            # The average loss is an estimate of the loss over the last 2000 batches.
-            print('Average loss at step ', step, ': ', average_loss)
             average_loss = 0
+            save_path = saver.save(sess, model_path)
+            print("模型保存:{0}\t当前损失:{1}".format(model_path,average_loss))
 
-        # Note that this is expensive (~20% slowdown if computed every 500 steps)
-        if step % 10000 == 0:
+        # 每隔迭代输出一次指定词语的最近邻居
+
+        if step % 100 == 0:
             sim = similarity.eval()
             for i in xrange(valid_size):
                 valid_word = reverse_dictionary[valid_examples[i]]
@@ -266,10 +251,11 @@ with tf.Session(graph=graph) as session:
                     log_str = '%s %s,' % (log_str, close_word)
                 print(log_str)
     final_embeddings = normalized_embeddings.eval()
-    saver.save(sess, "model/zh_lyric_vec.model")
 
 
-# 可视化
+'''
+@desc:绘制图像存储到指定png文件
+'''
 def plot_with_labels(low_dim_embs, labels, filename='lyric_word_vec.png'):
     assert low_dim_embs.shape[0] >= len(labels), 'More labels than embeddings'
     plt.figure()  # in inches
@@ -284,21 +270,22 @@ def plot_with_labels(low_dim_embs, labels, filename='lyric_word_vec.png'):
                      va='bottom', fontproperties=myfont)
 
     plt.savefig(filename)
-    file = open('lyric_word_vec.png', 'rb')
-    data = file.read()
-    file.close()
-    # 图片处理
-    image = tf.image.decode_png(data, channels=4)
-    image = tf.expand_dims(image, 0)
-
-    # 添加到日志中
-    sess = tf.Session()
-    writer = tf.summary.FileWriter('logs')
-    summary_op = tf.summary.image("image1", image)
-
-    # 运行并写入日志
-    summary = sess.run(summary_op)
-    writer.add_summary(summary)
+    #
+    # file = open('lyric_word_vec.png', 'rb')
+    # data = file.read()
+    # file.close()
+    # # 图片处理
+    # image = tf.image.decode_png(data, channels=4)
+    # image = tf.expand_dims(image, 0)
+    #
+    # # 添加到日志中
+    # sess = tf.Session()
+    # writer = tf.summary.FileWriter('logs')
+    # summary_op = tf.summary.image("image1", image)
+    #
+    # # 运行并写入日志
+    # summary = sess.run(summary_op)
+    # writer.add_summary(summary)
 
 
 try:
@@ -318,6 +305,7 @@ try:
     plot_only = 500
     low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
     labels = [reverse_dictionary[i] for i in xrange(plot_only)]
-    plot_with_labels(low_dim_embs, labels)
+    embs_pic_path = get_config("word2vec", "embs_pic_path")
+    plot_with_labels(low_dim_embs, labels, embs_pic_path)
 except ImportError:
     print('Please install sklearn, matplotlib, and scipy to show embeddings.')
