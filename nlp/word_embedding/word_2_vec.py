@@ -87,46 +87,46 @@ def build_dict(freq=5, del_threshold=1e-5):
     print("Total words:{}".format(len(raw_words)))
     print("Unique words:{}".format(len(train_words)))
     print("Trimed words:{}".format(len(trimed_dict)))
-    return vocab_2_idx, idx_2_vocab
+    return vocab_2_idx, idx_2_vocab, trimed_dict
 
-dictionary, reverse_dictionary = build_dict()
+vocab_2_idx, idx_2_vocab，trimed_dictionary = build_dict()
 
 
 '''
-@desc: 每次调用从每行中随机产生batch数据
+@desc: 从qa文件的每行中，在windowsize的窗口内随机产生batch数据
 @param: batch_size: 每次扫描的块的大小，
         num_skips:每个词的重用次数，取决于window的大小
         skip_window: 采样词的左右窗口大小（即决定了进行几gram的采样)skip_windows*2=num_skips
 '''
 def generate_batch(batch_size, num_skips, skip_window):
-    global data_index
     assert batch_size % num_skips == 0
     assert num_skips <= 2 * skip_window
-    batch = np.ndarray(shape=(batch_size), dtype=np.int32)
-    labels = np.ndarray(shape=(batch_size, 1), dtype=np.int32)
-    span = 2 * skip_window + 1  # [ skip_window target skip_window ]
-    buffer = collections.deque(maxlen=span)
-    if data_index + span > len(data):
-        data_index = 0
-    buffer.extend(data[data_index:data_index + span])
-    data_index += span
-    for i in range(batch_size // num_skips):
-        target = skip_window  # target label at the center of the buffer
-        targets_to_avoid = [skip_window]
-        for j in range(num_skips):
-            while target in targets_to_avoid:
-                target = random.randint(0, span - 1)
-            targets_to_avoid.append(target)
-            batch[i * num_skips + j] = buffer[skip_window]
-            labels[i * num_skips + j, 0] = buffer[target]
-        if data_index == len(data):
-            buffer[:] = data[:span]
-            data_index = span
-        else:
-            buffer.append(data[data_index])
-            data_index += 1
-    # Backtrack a little bit to avoid skipping words in the end of a batch
-    data_index = (data_index + len(data) - span) % len(data)
+    batch_list = []
+    label_list = []
+    # 对每个qasent进行分词然后逐个得到batch信息
+    qa_sents = open(get_config("word2vec", "train_data")).readline().split(line_split)
+    for sent_pair in qa_sents:
+        sent_list = sent_pair.split(qa_split)
+    # 将本单词之外的所有单词计入label，如果本单词在trim词典中就放弃记录
+    for single_sent in sent_list:
+        query_list = single_sent.split(word_split)
+        for i in range(len(query_list)):
+            if query_list[i] in trimed_dictionary.keys():
+                continue
+            input_id = vocab_2_idx[query_list[i]]
+            target_window = np.random.randint(1,skip_window+1)
+            start = max(0, i-target_window)
+            end = min(len(query_list)-1, i+target_window)
+            for idx in range(start, end):
+                if idx!=i:
+                    output_id = 0 if(answer_list[idx] in trimed_dictionary.keys()) else vocab_2_idx[answer_list[idx]]
+                    batch_list.append(input_id)
+                    batch_list.append(output_id)
+
+
+    batch = np.ndarray(batch_list, dtype=np.int32)
+    labels = np.ndarray(label_list, dtype=np.int32)
+    labels = np.reshape(labels, [batch_labels.__len__(), 1])
     return batch, labels
 
 
@@ -247,7 +247,7 @@ with tf.Session(graph=graph) as session:
                 average_loss /= 2000
             average_loss = 0
             save_path = saver.save(sess, model_path)
-            print("模型保存:{0}\t当前损失:{1}".format(model_path,average_loss))
+            print("模型保存:{0}\t当前损失:{1}".format(model_path, average_loss))
 
         # 每step_num词隔迭代输出一次指定词语的最近邻居
         if step % 100 == 0:
