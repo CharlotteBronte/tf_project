@@ -53,14 +53,21 @@ def get_config_int(section, key):
     config.read(path)
     return config.get_int(section, key)
 
-
+#从原始文件中得到词表并存储在csv文件中
+raw_words_file=get_config("word2vec","raw_words_file")
+raw_words = open(get_config("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+numpy.savetxt(raw_words_file, raw_words, delimiter='')
+print("Raw words:{}".format(len(raw_words)))
 '''
 @desc: 从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
 @param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
 def build_dict(freq=5, del_threshold=1e-5):
-    raw_words = open(get_config("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+    raw_words_file = get_config("word2vec", "raw_words_file")
+    raw_words = numpy.loadtxt(open(raw_words_file,"rb"),delimiter=",",skiprows=0)
+    print("读取文件成功，总词表长度为{0}".format(len(raw_words)))
+
     word_counts = Counter(raw_words)
     # 计算总词频
     total_count = len(raw_words)
@@ -78,7 +85,8 @@ def build_dict(freq=5, del_threshold=1e-5):
     print("Trimed words:{}".format(len(trimed_dict)))
     return vocab_2_idx, idx_2_vocab
 
-dictionary, reverse_dictionary = build_dict(vocabulary, vocabulary_size)
+trim_word_freq=get_config_int("word2vec","trim_word_freq")
+dictionary, reverse_dictionary = build_dict(trim_word_freq, vocabulary_size)
 
 
 '''
