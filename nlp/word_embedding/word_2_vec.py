@@ -89,7 +89,7 @@ def build_dict(freq=5, del_threshold=1e-5):
     print("Trimed words:{}".format(len(trimed_dict)))
     return len(vocab_2_idx), vocab_2_idx, idx_2_vocab, trimed_dict
 
-vocabulary_size, vocab_2_idx, idx_2_vocab，trimed_dictionary = build_dict()
+vocabulary_size, vocab_2_idx, idx_2_vocab,trimed_dictionary = build_dict()
 
 
 '''
@@ -121,12 +121,12 @@ def generate_batch(batch_size, num_skips, skip_window):
                 if idx!=i:
                     output_id = 0 if(answer_list[idx] in trimed_dictionary.keys()) else vocab_2_idx[answer_list[idx]]
                     batch_list.append(input_id)
-                    batch_list.append(output_id)
+                    label_list.append(output_id)
 
 
     batch = np.ndarray(batch_list, dtype=np.int32)
     labels = np.ndarray(label_list, dtype=np.int32)
-    labels = np.reshape(labels, [batch_labels.__len__(), 1])
+    labels = np.reshape(labels, [labels.__len__(), 1])
     return batch, labels
 
 
