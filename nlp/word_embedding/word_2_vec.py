@@ -57,8 +57,8 @@ def get_config_int(section, key):
 #从原始文件中得到词表并存储在csv文件中
 raw_words_file=get_config("word2vec","raw_words_file")
 raw_words = open(get_config("word2vec","train_data")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
-raw_file = open(get_config("word2vec","raw_words_file"),"w")
-raw_file.write(str(raw_words))
+raw_file = open(get_config("word2vec","raw_words_file"), 'wb')
+pickle.dump(raw_words, raw_file)
 raw_file.close()
 print("Raw words:{}".format(len(raw_words)))
 '''
@@ -67,8 +67,9 @@ print("Raw words:{}".format(len(raw_words)))
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
 def build_dict(freq=5, del_threshold=1e-5):
-    raw_words_file = get_config("word2vec", "raw_words_file")
-    raw_words = numpy.loadtxt(open(raw_words_file,"rb"),delimiter="",skiprows=0)
+    raw_words_file = open(get_config("word2vec", "raw_words_file"),"wb")
+    pickle.load(raw_words)
+    raw_words_file.close()
     print("读取文件成功，总词表长度为{0}".format(len(raw_words)))
 
     word_counts = Counter(raw_words)
