@@ -53,20 +53,23 @@ def get_config_int(section, key):
     config = ConfigParser.ConfigParser()
     path = os.path.split(os.path.realpath(__file__))[0] + config_file
     config.read(path)
-    return config.get_int(section, key)
+    return config.getint(section, key)
 
 #从原始文件中得到词表并存储在csv文件中
-raw_words = open(get_config("word2vec","train_data")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
-raw_file = open(get_config("word2vec","raw_words_file"), 'wb')
-pickle.dump(raw_words, raw_file)
-raw_file.close()
-print("Raw words:{}".format(len(raw_words)))
+def read_raw_words():
+    raw_words = open(get_config("word2vec","train_data")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+    raw_file = open(get_config("word2vec","raw_words_file"), 'wb')
+    pickle.dump(raw_words, raw_file)
+    raw_file.close()
+    print("Raw words:{}".format(len(raw_words)))
+
 '''
 @desc: 从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
 @param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
-def build_dict(freq=5, del_threshold=1e-5):
+def build_dict(freq=3, del_threshold=0.95):
+    #read_raw_words()
     raw_words_file = open(get_config("word2vec", "raw_words_file"),"rb")
     raw_words = pickle.load(raw_words_file)
     raw_words_file.close()
@@ -76,9 +79,10 @@ def build_dict(freq=5, del_threshold=1e-5):
     # 计算总词频
     total_count = len(raw_words)
     word_freq = {w: c / total_count for w, c in word_counts.items()}
-    prob_drop = {w: 1 - np.sqrt(del_threshold / f) for w, f in word_freq.items()}
+    prob_drop = {w: 1 - np.sqrt(1e-5/f) for w, f in word_freq.items()}
+   
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
-    train_words = [w for w in raw_words if (prob_drop[w]<del_threshold and word_counts[w]>freq)]
+    train_words = [w for w in raw_words if(prob_drop[w]<del_threshold and word_counts[w]>freq)]
     trimed_dict = {w:0 for w in raw_words if (prob_drop[w]>=del_threshold or word_counts[w]<=freq)}
     vocab = set(train_words)
     vocab.add("UNK")
@@ -110,23 +114,25 @@ def generate_batch(batch_size, num_skips, skip_window):
 
         # 将本单词之外的所有单词计入label，如果本单词在trim词典中就放弃记录
         for single_sent in sent_list:
-            query_list = single_sent.split(word_split)
+            query_list = map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],single_sent.split(word_split))
             for i in range(len(query_list)):
                 if query_list[i] in trimed_dictionary.keys():
                     continue
-                input_id = vocab_2_idx[query_list[i]]
+                input_id = query_list[i]
                 target_window = np.random.randint(1,skip_window+1)
                 start = max(0, i-target_window)
                 end = min(len(query_list)-1, i+target_window)
                 for idx in range(start, end):
                     if idx!=i:
-                        output_id = 0 if(answer_list[idx] in trimed_dictionary.keys()) else vocab_2_idx[answer_list[idx]]
+                        output_id = query_list[idx] 
                         batch_list.append(input_id)
                         label_list.append(output_id)
-
+                if len(batch_list) % 1000 ==0:
+                    print("Get line info {0}".format(len(batch_list)))
     batch_shape_1D = len(batch_list)
-    batch = np.ndarray(batch_list, dtype=np.int32)
-    labels_tmp = np.ndarray(label_list, dtype=np.int32)
+    print("Batch list size {}".format(len(batch_list)))
+    batch = np.array(batch_list, dtype=np.int32)
+    labels_tmp = np.array(label_list, dtype=np.int32)
     labels = np.reshape(labels_tmp, [batch_shape_1D,1])
     return batch, labels
 
@@ -203,7 +209,7 @@ with graph.as_default():
         normalized_embeddings, valid_dataset)
     similarity = tf.matmul(
         valid_embeddings, normalized_embeddings, transpose_b=True)
-    merged_summary_op = tf.merge_all_summaries()
+    merged_summary_op = tf.summary.merge_all()
 
     # Add variable initializer.
 
@@ -213,19 +219,19 @@ with graph.as_default():
 '''
 num_steps = get_config_int("word2vec", "num_steps")
 #初始化所有数据和存储
-saver = tf.train.Saver()
-log_dir =  get_config("word2vec","word2vec_log")
+log_dir =  get_config("word2vec","log_dir")
 print('Begin Training')
 with tf.Session(graph=graph) as session:
     model_path = get_config("word2vec","model_path")
+    saver = tf.train.Saver()
     # 存在就从模型中恢复变量
     if os.path.exists(model_path):
-        saver.restore(sess, model_path)
+        saver.restore(session, model_path)
     # 不存在就初始化变量
     else:
         init = tf.global_variables_initializer()
-        sess.run(init)
-    summary_writer = tf.train.SummaryWriter(log_dir, session.graph)
+        session.run(init)
+    summary_writer = tf.summary.FileWriter(log_dir, session.graph)
 
 
     average_loss = 0
@@ -233,7 +239,7 @@ with tf.Session(graph=graph) as session:
         batch_inputs, batch_labels = generate_batch(
             batch_size, num_skips, skip_window)
         feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
-        tf.scalar_summary('loss', loss_val)
+        tf.summary.scalar('loss',average_loss)
         _, loss_val = session.run([optimizer, loss], feed_dict=feed_dict)
         average_loss += loss_val
 
@@ -247,7 +253,7 @@ with tf.Session(graph=graph) as session:
             if step > 0:
                 average_loss /= 2000
             average_loss = 0
-            save_path = saver.save(sess, model_path)
+            save_path = saver.save(sess, model_path, global_step=step)
             print("模型保存:{0}\t当前损失:{1}".format(model_path, average_loss))
 
         # 每step_num词隔迭代输出一次指定词语的最近邻居
