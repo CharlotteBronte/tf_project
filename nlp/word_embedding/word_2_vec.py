@@ -107,22 +107,21 @@ def generate_batch(batch_size, num_skips, skip_window):
     qa_sents = open(get_config("word2vec", "train_data")).readline().split(line_split)
     for sent_pair in qa_sents:
         sent_list = sent_pair.split(qa_split)
-    # 将本单词之外的所有单词计入label，如果本单词在trim词典中就放弃记录
-    for single_sent in sent_list:
-        query_list = single_sent.split(word_split)
-        for i in range(len(query_list)):
-            if query_list[i] in trimed_dictionary.keys():
-                continue
-            input_id = vocab_2_idx[query_list[i]]
-            target_window = np.random.randint(1,skip_window+1)
-            start = max(0, i-target_window)
-            end = min(len(query_list)-1, i+target_window)
-            for idx in range(start, end):
-                if idx!=i:
-                    output_id = 0 if(answer_list[idx] in trimed_dictionary.keys()) else vocab_2_idx[answer_list[idx]]
-                    batch_list.append(input_id)
-                    label_list.append(output_id)
-
+        # 将本单词之外的所有单词计入label，如果本单词在trim词典中就放弃记录
+        for single_sent in sent_list:
+            query_list = single_sent.split(word_split)
+            for i in range(len(query_list)):
+                if query_list[i] in trimed_dictionary.keys():
+                    continue
+                input_id = vocab_2_idx[query_list[i]]
+                target_window = np.random.randint(1,skip_window+1)
+                start = max(0, i-target_window)
+                end = min(len(query_list)-1, i+target_window)
+                for idx in range(start, end):
+                    if idx!=i:
+                        output_id = 0 if(answer_list[idx] in trimed_dictionary.keys()) else vocab_2_idx[answer_list[idx]]
+                        batch_list.append(input_id)
+                        label_list.append(output_id)
 
     batch = np.ndarray(batch_list, dtype=np.int32)
     labels = np.ndarray(label_list, dtype=np.int32)
