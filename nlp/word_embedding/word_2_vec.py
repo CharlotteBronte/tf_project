@@ -56,8 +56,10 @@ def get_config_int(section, key):
 
 #从原始文件中得到词表并存储在csv文件中
 raw_words_file=get_config("word2vec","raw_words_file")
-raw_words = open(get_config("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
-numpy.savetxt(raw_words_file, raw_words, delimiter='')
+raw_words = open(get_config("word2vec","train_data")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+raw_file = open(get_config("word2vec","raw_words_file"),"w")
+raw_file.write(str(raw_words))
+raw_file.close()
 print("Raw words:{}".format(len(raw_words)))
 '''
 @desc: 从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
