@@ -13,6 +13,7 @@ from __future__ import division
 from __future__ import print_function
 
 import collections
+from collections import Counter
 import math
 import sys, os
 import random
@@ -28,9 +29,9 @@ from six.moves import xrange  # pylint: disable=redefined-builtin
 import tensorflow as tf
 import ConfigParser
 
-line_split = ""
-qa_split = ""
-word_split = ""
+line_split = ""
+qa_split = ""
+word_split = ""
 config_file = "/word_embedding.ini"
 
 '''
@@ -56,7 +57,7 @@ def get_config_int(section, key):
 #从原始文件中得到词表并存储在csv文件中
 raw_words_file=get_config("word2vec","raw_words_file")
 raw_words = open(get_config("word2vec","train_data")).replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
-numpy.savetxt(raw_words_file, raw_words, delimiter='')
+numpy.savetxt(raw_words_file, raw_words, delimiter='')
 print("Raw words:{}".format(len(raw_words)))
 '''
 @desc: 从行从split出word并将低频词和停用词(删除概率P(Wi)=1-sqrt(t/frequent(Wi))都平滑掉
@@ -65,7 +66,7 @@ print("Raw words:{}".format(len(raw_words)))
 '''
 def build_dict(freq=5, del_threshold=1e-5):
     raw_words_file = get_config("word2vec", "raw_words_file")
-    raw_words = numpy.loadtxt(open(raw_words_file,"rb"),delimiter=",",skiprows=0)
+    raw_words = numpy.loadtxt(open(raw_words_file,"rb"),delimiter="",skiprows=0)
     print("读取文件成功，总词表长度为{0}".format(len(raw_words)))
 
     word_counts = Counter(raw_words)
@@ -85,8 +86,12 @@ def build_dict(freq=5, del_threshold=1e-5):
     print("Trimed words:{}".format(len(trimed_dict)))
     return vocab_2_idx, idx_2_vocab
 
+<<<<<<< HEAD
 trim_word_freq=get_config_int("word2vec","trim_word_freq")
 dictionary, reverse_dictionary = build_dict(trim_word_freq, vocabulary_size)
+=======
+dictionary, reverse_dictionary = build_dict()
+>>>>>>> f6dfa0c7b789e54d813abd70f254193b4a2e169d
 
 
 '''
@@ -234,8 +239,9 @@ with tf.Session(graph=graph) as session:
         average_loss += loss_val
 
         # 每隔100次迭代，保存一次日志
-        summary_str = session.run(merged_summary_op)
-        summary_writer.add_summary(summary_str, step)
+        if step % 100 ==0:
+            summary_str = session.run(merged_summary_op)
+            summary_writer.add_summary(summary_str, step)
 
         # 每2000次迭代输出一次损失 保存一次模型
         if step % get_config_int == 0:
@@ -245,8 +251,7 @@ with tf.Session(graph=graph) as session:
             save_path = saver.save(sess, model_path)
             print("模型保存:{0}\t当前损失:{1}".format(model_path,average_loss))
 
-        # 每隔迭代输出一次指定词语的最近邻居
-
+        # 每step_num词隔迭代输出一次指定词语的最近邻居
         if step % 100 == 0:
             sim = similarity.eval()
             for i in xrange(valid_size):
