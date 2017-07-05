@@ -87,9 +87,9 @@ def build_dict(freq=5, del_threshold=1e-5):
     print("Total words:{}".format(len(raw_words)))
     print("Unique words:{}".format(len(train_words)))
     print("Trimed words:{}".format(len(trimed_dict)))
-    return vocab_2_idx, idx_2_vocab, trimed_dict
+    return len(vocab_2_idx), vocab_2_idx, idx_2_vocab, trimed_dict
 
-vocab_2_idx, idx_2_vocab，trimed_dictionary = build_dict()
+vocabulary_size, vocab_2_idx, idx_2_vocab，trimed_dictionary = build_dict()
 
 
 '''
@@ -132,8 +132,8 @@ def generate_batch(batch_size, num_skips, skip_window):
 
 batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
 for i in range(8):
-    print(batch[i], reverse_dictionary[batch[i]],
-          '->', labels[i, 0], reverse_dictionary[labels[i, 0]])
+    print(batch[i], idx_2_vocab[batch[i]],
+          '->', labels[i, 0], idx_2_vocab[labels[i, 0]])
 
 
 '''
@@ -253,12 +253,12 @@ with tf.Session(graph=graph) as session:
         if step % 100 == 0:
             sim = similarity.eval()
             for i in xrange(valid_size):
-                valid_word = reverse_dictionary[valid_examples[i]]
+                valid_word = idx_2_vocab[valid_examples[i]]
                 top_k = 8  # number of nearest neighbors
                 nearest = (-sim[i, :]).argsort()[1:top_k + 1]
                 log_str = 'Nearest to %s:' % valid_word
                 for k in xrange(top_k):
-                    close_word = reverse_dictionary[nearest[k]]
+                    close_word = idx_2_vocab[nearest[k]]
                     log_str = '%s %s,' % (log_str, close_word)
                 print(log_str)
     final_embeddings = normalized_embeddings.eval()
@@ -315,7 +315,7 @@ try:
     tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
     plot_only = 500
     low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
-    labels = [reverse_dictionary[i] for i in xrange(plot_only)]
+    labels = [idx_2_vocab[i] for i in xrange(plot_only)]
     embs_pic_path = get_config("word2vec", "embs_pic_path")
     plot_with_labels(low_dim_embs, labels, embs_pic_path)
 except ImportError:
