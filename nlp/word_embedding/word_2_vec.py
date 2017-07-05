@@ -86,12 +86,7 @@ def build_dict(freq=5, del_threshold=1e-5):
     print("Trimed words:{}".format(len(trimed_dict)))
     return vocab_2_idx, idx_2_vocab
 
-<<<<<<< HEAD
-trim_word_freq=get_config_int("word2vec","trim_word_freq")
-dictionary, reverse_dictionary = build_dict(trim_word_freq, vocabulary_size)
-=======
 dictionary, reverse_dictionary = build_dict()
->>>>>>> f6dfa0c7b789e54d813abd70f254193b4a2e169d
 
 
 '''
