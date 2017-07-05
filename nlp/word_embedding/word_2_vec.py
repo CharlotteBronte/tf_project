@@ -123,10 +123,10 @@ def generate_batch(batch_size, num_skips, skip_window):
                     batch_list.append(input_id)
                     label_list.append(output_id)
 
-
+    batch_shape_1D = len(batch_list)
     batch = np.ndarray(batch_list, dtype=np.int32)
-    labels = np.ndarray(label_list, dtype=np.int32)
-    labels = np.reshape(labels, [labels.__len__(), 1])
+    labels_tmp = np.ndarray(label_list, dtype=np.int32)
+    labels = np.reshape(labels_tmp, [batch_shape_1D,1])
     return batch, labels
 
 
