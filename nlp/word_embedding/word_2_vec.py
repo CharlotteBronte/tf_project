@@ -117,9 +117,9 @@ def build_sent_file(qa_file_name, idx_file_name):
             continue;
         # list向量化
         q_list.append(map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],
-                          single_sent.split(word_split), single_sent[0].split(word_split)))
+                           single_sent[0].split(word_split)))
         a_list.append(map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],
-                          single_sent.split(word_split), single_sent[1].split(word_split)))
+                          single_sent[1].split(word_split)))
     sent_vec_file = open(get_config("word2vec", "sent_vec_file"), 'wb')
     pickle.dump(q_list, sent_vec_file)
     pickle.dump(a_list, sent_vec_file)
