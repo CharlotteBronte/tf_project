@@ -14,6 +14,8 @@ from __future__ import print_function
 
 import collections
 from collections import Counter
+from tensorflow.contrib.tensorboard.plugins import projector
+
 import math
 import sys, os
 import random
@@ -33,8 +35,8 @@ import ConfigParser
 line_split = ""
 qa_split = ""
 word_split = ""
-config_file = "/word_embedding.ini"
-
+config_path = sys.argv[1]
+print("配置路径为:{}".format(config_path))
 '''
 @desc: 得到路径配置
 @format: [word2vec] train_data=xxxx
@@ -43,8 +45,7 @@ config_file = "/word_embedding.ini"
 
 def get_config(section, key):
     config = ConfigParser.ConfigParser()
-    path = os.path.split(os.path.realpath(__file__))[0] + config_file
-    config.read(path)
+    config.read(config_path)
     return config.get(section, key)
 
 
@@ -56,8 +57,7 @@ def get_config(section, key):
 
 def get_config_int(section, key):
     config = ConfigParser.ConfigParser()
-    path = os.path.split(os.path.realpath(__file__))[0] + config_file
-    config.read(path)
+    config.read(config_path)
     return config.getint(section, key)
 
 #从原始文件中得到词表并存储在csv文件中
@@ -208,22 +208,20 @@ with graph.as_default():
             tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0), name="embeddings")
         embed = tf.nn.embedding_lookup(embeddings, train_inputs)
 
+
         nce_weights = tf.Variable(tf.truncated_normal([vocab_size, embedding_size],
                                 stddev=1.0 / math.sqrt(embedding_size)), name="nec_weight")
         nce_biases = tf.Variable(tf.zeros([vocab_size]), name="nce_biases")
 
-    with tf.name_scope('loss'):
-        loss = tf.reduce_mean(
+    loss = tf.reduce_mean(
             tf.nn.nce_loss(weights=nce_weights,
                        biases=nce_biases,
                        labels=train_labels,
                        inputs=embed,
                        num_sampled=num_sampled,
                        num_classes=vocab_size))
-        tf.summary.scalar('loss', loss)
-
+    loss_log = tf.summary.scalar('loss', loss)
     optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
-
     # 计算候选embedding的cosine相似度
     norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
     normalized_embeddings = embeddings / norm
@@ -231,7 +229,7 @@ with graph.as_default():
         normalized_embeddings, valid_dataset)
     similarity = tf.matmul(
         valid_embeddings, normalized_embeddings, transpose_b=True)
-    merged_summary_op = tf.summary.merge_all()
+    merged_summary_op = tf.summary.merge([loss_log])
 
 
 '''
@@ -254,9 +252,6 @@ with tf.Session(graph=graph) as session:
     summary_writer = tf.summary.FileWriter(log_dir, session.graph)
 
     average_loss = 0
-    begin_line = 0
-    begin_idx = 0
-    line_num = len(qa_sents)
     for step in xrange(num_steps):
         batch_inputs = []
         batch_labels = []
@@ -274,12 +269,11 @@ with tf.Session(graph=graph) as session:
             average_loss = 0
             save_path = saver.save(session, model_path, global_step=step)
             print("模型保存:{0}\t当前损失:{1}".format(model_path,  loss_val))
+
         # 每隔100次迭代，保存一次日志
-        '''
         if step % 100 == 0:
-            summary_str = session.run(merged_summary_op)
+            summary_str = session.run(merged_summary_op,feed_dict=feed_dict )
             summary_writer.add_summary(summary_str, step)
-        '''
 
         # 每step_num词隔迭代输出一次指定词语的最近邻居
         if step % 100 == 0:
@@ -293,14 +287,24 @@ with tf.Session(graph=graph) as session:
                     close_word = idx_2_vocab[nearest[k]]
                     log_str = '%s %s,' % (log_str, close_word)
                 print(log_str)
-    final_embeddings = normalized_embeddings.eval()
+    final_embeddings = tf.Variable(normalized_embeddings.eval(),"final_embeddings")
+    '''
+    print(final_embeddings.shape)
+    config = projector.ProjectorConfig()
+    embedding_proj = config.embeddings.add()
+    embedding_proj.tensor_name = final_embeddings.name
+    embedding_proj.metadata_path = get_config("word2vec", "embedding_proj_path")
+    embedding.sprite.image_path = get_config("word2vec", "embedding_proj_sprites")
+    projector.visualize_embeddings(summary_writer, config)
+    '''
+
 
 
 '''
-@desc:绘制图像存储到指定png文件
+@desc.绘制图像存储到指定png文件
 '''
 def plot_with_labels(low_dim_embs, labels, filename):
-    assert low_dim_embs.shape[0] >= len(labels), 'More labels than embeddings'
+    assert low_dim_embs.shape[0] >= len(labels), 'more labels than embeddings'
     plt.figure()  # in inches
     for i, label in enumerate(labels):
         x, y = low_dim_embs[i, :]
@@ -313,7 +317,6 @@ def plot_with_labels(low_dim_embs, labels, filename):
                      va='bottom', fontproperties=myfont)
 
     plt.savefig(filename)
-    #
     # file = open('lyric_word_vec.png', 'rb')
     # data = file.read()
     # file.close()
@@ -348,7 +351,7 @@ try:
     plot_only =100 
     low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
     labels = [idx_2_vocab[i] for i in xrange(plot_only)]
-    mbs_pic_path = get_config("word2vec", "embs_pic_path")
+    embs_pic_path = get_config("word2vec", "embs_pic_path")
     plot_with_labels(low_dim_embs, labels, embs_pic_path)
 except ImportError:
     print('Please install sklearn, matplotlib, and scipy to show embeddings.')
