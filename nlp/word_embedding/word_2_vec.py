@@ -166,10 +166,11 @@ def generate_batch(batch_size, num_skips, skip_window):
     batch_list = []
     label_list = []
     #根据指定的行号从q和a的sentence中取出需要的batch
-    while len(batch_list)< batch_size:
+    while len(batch_list) < batch_size:
         global line_idx,word_idx
-        if line_idx > all_line_num:
+        if line_idx >= all_line_num or word_idx>=len(qa_sents[line_idx]):
             line_idx = 0 
+            word_idx = 0
         query_list = qa_sents[line_idx]         
         line_idx +=1 
         for idx in range(word_idx,len(query_list)):
@@ -180,18 +181,17 @@ def generate_batch(batch_size, num_skips, skip_window):
                     end = min(len(query_list) - 1, idx + target_window)
                     for i in range(start, end):
                         if idx != i:
+                            if len(batch_list)==batch_size:
+                                #print("Generate batch size is {}".format(len(batch_list)))
+                                batchs = np.array(batch_list, dtype=np.int32)
+                                gatchs = batchs.reshape([batch_size])
+                                labels = np.array(label_list, dtype=np.int32)
+                                labels = labels.reshape([batch_size,1])
+                                word_idx = idx + 1
+                                return  batchs,labels
                             output_id = query_list[i]
                             batch_list.append(input_id)
                             label_list.append(output_id)
-                            if len(batch_list)==batch_size:
-                                word_idx = idx    
-                                break;break;break;
-        word_idx = 0
-    print("Generate batch size is {}".format(len(batch_list)))
-    batchs = np.array(batch_list, dtype=np.int32)
-    labels = np.array(label_list, dtype=np.int32)
-    labels = labels.reshape((len(batch_list),1))
-    return  batchs,labels
 
 test_batch, test_label= generate_batch(batch_size, num_skips=2, skip_window=1)
 for i in range(10):
@@ -273,11 +273,13 @@ with tf.Session(graph=graph) as session:
                 average_loss /= 2000
             average_loss = 0
             save_path = saver.save(session, model_path, global_step=step)
-            print("模型保存:{0}\t当前损失:{1}".format(model_path, average_loss))
+            print("模型保存:{0}\t当前损失:{1}".format(model_path,  loss_val))
         # 每隔100次迭代，保存一次日志
+        '''
         if step % 100 == 0:
             summary_str = session.run(merged_summary_op)
             summary_writer.add_summary(summary_str, step)
+        '''
 
         # 每step_num词隔迭代输出一次指定词语的最近邻居
         if step % 100 == 0:
@@ -297,7 +299,7 @@ with tf.Session(graph=graph) as session:
 '''
 @desc:绘制图像存储到指定png文件
 '''
-def plot_with_labels(low_dim_embs, labels, filename='lyric_word_vec.png'):
+def plot_with_labels(low_dim_embs, labels, filename):
     assert low_dim_embs.shape[0] >= len(labels), 'More labels than embeddings'
     plt.figure()  # in inches
     for i, label in enumerate(labels):
@@ -343,10 +345,10 @@ try:
     tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
 
     tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-    plot_only = 500
+    plot_only =100 
     low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
     labels = [idx_2_vocab[i] for i in xrange(plot_only)]
-    embs_pic_path = get_config("word2vec", "embs_pic_path")
+    mbs_pic_path = get_config("word2vec", "embs_pic_path")
     plot_with_labels(low_dim_embs, labels, embs_pic_path)
 except ImportError:
     print('Please install sklearn, matplotlib, and scipy to show embeddings.')
