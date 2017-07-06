@@ -120,7 +120,7 @@ def build_sent_file(qa_file_name, idx_file_name):
                            single_sent[0].split(word_split)))
         a_list.append(map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],
                           single_sent[1].split(word_split)))
-    sent_vec_file = open(get_config("word2vec", "sent_vec_file"), 'wb')
+    sent_vec_file = open(get_config("word2vec", "idx_file_name"), 'wb')
     pickle.dump(q_list, sent_vec_file)
     pickle.dump(a_list, sent_vec_file)
     sent_vec_file.close()
@@ -131,7 +131,7 @@ idx_file = open(get_config("word2vec", "idx_file_name"), "rb")
 q_sents = pickle.load(idx_file)
 a_sents = pickle.load(idx_file)
 idx_file.close();
-batch_nums = len(batchs)
+batch_nums = len(q_sents)
 
 
 '''
@@ -169,9 +169,9 @@ def generate_batch(line_begin, line_end, num_skips, skip_window):
     return batch_list,label_list
 
 
-batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
-for i in range(8):
-    print(batch[i], idx_2_vocab[batch[i]],
+test_batch, test_label= generate_batch(line_begin=0, line_end=2,  num_skips=2, skip_window=1)
+for i in range(len(test_batch)):
+    print(test_batch[i], idx_2_vocab[batch[i]],
           '->', labels[i, 0], idx_2_vocab[labels[i, 0]])
 
 
