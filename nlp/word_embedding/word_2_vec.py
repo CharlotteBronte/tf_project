@@ -142,7 +142,6 @@ batch_nums = len(q_sents)
         skip_window: 采样词的左右窗口大小（即决定了进行几gram的采样)skip_windows*2=num_skips
 '''
 def generate_batch(line_begin, line_end, num_skips, skip_window):
-    assert batch_size % num_skips == 0
     assert num_skips <= 2 * skip_window
     UNK_idx = vocab_2_idx["UNK"]
     batch_list = []
@@ -171,11 +170,10 @@ def generate_batch(line_begin, line_end, num_skips, skip_window):
     labels = np.ndarray(test_label, shape=(test_batch_len, 1), dtype=np.int32)
     return batch_len, batchs,labels
 
-
 test_batch_len, test_batch, test_label= generate_batch(line_begin=0, line_end=2,  num_skips=2, skip_window=1)
 for i in range(len(test_batch)):
-    print(test_batch[i], idx_2_vocab[batch[i]],
-          '->', labels[i, 0], idx_2_vocab[labels[i, 0]])
+    print(test_batch[i], idx_2_vocab[test_batch[i]],
+          '->', test_label[i, 0], idx_2_vocab[test_label[i, 0]])
 
 
 '''
