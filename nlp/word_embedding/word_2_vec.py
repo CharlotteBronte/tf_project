@@ -166,7 +166,6 @@ def generate_batch(batch_size, num_skips, skip_window):
     batch_list = []
     label_list = []
     #根据指定的行号从q和a的sentence中取出需要的batch
-    print(batch_size)
     while len(batch_list)< batch_size:
         global line_idx,word_idx
         if line_idx > all_line_num:
@@ -188,6 +187,7 @@ def generate_batch(batch_size, num_skips, skip_window):
                                 word_idx = idx    
                                 break;break;break;
         word_idx = 0
+    print("Generate batch size is {}".format(len(batch_list)))
     batchs = np.array(batch_list, dtype=np.int32)
     labels = np.array(label_list, dtype=np.int32)
     labels = labels.reshape((len(batch_list),1))
@@ -197,8 +197,6 @@ test_batch, test_label= generate_batch(batch_size, num_skips=2, skip_window=1)
 for i in range(10):
     print(test_batch[i], idx_2_vocab[test_batch[i]],
           '->', test_label[i, 0], idx_2_vocab[test_label[i, 0]])
-
-
 
 graph = tf.Graph()
 with graph.as_default():
@@ -214,13 +212,15 @@ with graph.as_default():
                                 stddev=1.0 / math.sqrt(embedding_size)), name="nec_weight")
         nce_biases = tf.Variable(tf.zeros([vocab_size]), name="nce_biases")
 
-    loss = tf.reduce_mean(
-        tf.nn.nce_loss(weights=nce_weights,
+    with tf.name_scope('loss'):
+        loss = tf.reduce_mean(
+            tf.nn.nce_loss(weights=nce_weights,
                        biases=nce_biases,
                        labels=train_labels,
                        inputs=embed,
                        num_sampled=num_sampled,
                        num_classes=vocab_size))
+        tf.summary.scalar('loss', loss)
 
     optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
 
