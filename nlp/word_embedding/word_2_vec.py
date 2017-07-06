@@ -100,11 +100,6 @@ def build_dict(freq=3, del_threshold=0.95):
 
 vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
 
-batch, labels = generate_batch(0,10, num_skips=2, skip_window=1)
-for i in range(8):
-    print(batch[i], idx_2_vocab[batch[i]],
-          '->', labels[i, 0], idx_2_vocab[labels[i, 0]])
-
 
 '''
 @desc: 将所有的原始数据idx化并存储
