@@ -62,7 +62,7 @@ def get_config_int(section, key):
 
 #从原始文件中得到词表并存储在csv文件中
 def read_raw_words():
-    raw_words = open(get_config("word2vec","train_data")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+    raw_words = open(get_config("word2vec","train_data_file")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
     raw_file = open(get_config("word2vec","raw_words_file"), 'wb')
     pickle.dump(raw_words, raw_file)
     raw_file.close()
@@ -107,7 +107,7 @@ vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
         idx_file_name: 索引化后的文件路径
 '''
 def build_sent_file(qa_file_name, idx_file_name):
-    qa_sents = open(get_config("word2vec", "train_data")).readline().split(line_split)
+    qa_sents = open(get_config("word2vec", "train_data_file")).readline().split(line_split)
     q_list = []
     a_list = []
     # 对每个qasent进行分词然后逐个得到batch信息
@@ -126,7 +126,7 @@ def build_sent_file(qa_file_name, idx_file_name):
     sent_vec_file.close()
 
 
-build_sent_file(get_config("word2vec", "qa_file_name"), get_config("word2vec", "idx_file_name"))
+build_sent_file(get_config("word2vec", "train_data_file"), get_config("word2vec", "idx_file_name"))
 idx_file = open(get_config("word2vec", "idx_file_name"), "rb")
 q_sents = pickle.load(idx_file)
 a_sents = pickle.load(idx_file)
