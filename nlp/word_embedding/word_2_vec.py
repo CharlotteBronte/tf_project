@@ -96,9 +96,9 @@ def build_dict(freq=3, del_threshold=0.95):
     print("Total words:{}".format(len(raw_words)))
     print("Unique words:{}".format(len(train_words)))
     print("Trimed words:{}".format(len(trimed_dict)))
-    return  vocab_2_idx, idx_2_vocab, trimed_dict
+    return  len(vocab_2_idx),vocab_2_idx, idx_2_vocab, trimed_dict
 
-vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
+vocab_size, vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
 
 
 '''
@@ -121,6 +121,10 @@ def build_sent_file(qa_file_name, idx_file_name):
         a_list.append(map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],
                           single_sent[1].split(word_split)))
     sent_vec_file = open(get_config("word2vec", "idx_file_name"), 'wb')
+    all_sent_list = []
+    all_sent_list.extend(q_list)
+    all_sent_list.extend(a_list)
+    pickle.dump(all_sent_list, sent_vec_file)
     pickle.dump(q_list, sent_vec_file)
     pickle.dump(a_list, sent_vec_file)
     sent_vec_file.close()
@@ -128,8 +132,7 @@ def build_sent_file(qa_file_name, idx_file_name):
 
 build_sent_file(get_config("word2vec", "train_data_file"), get_config("word2vec", "idx_file_name"))
 idx_file = open(get_config("word2vec", "idx_file_name"), "rb")
-q_sents = pickle.load(idx_file)
-a_sents = pickle.load(idx_file)
+qa_sents = pickle.load(idx_file)
 idx_file.close();
 batch_nums = len(q_sents)
 
@@ -144,34 +147,33 @@ batch_nums = len(q_sents)
 def generate_batch(line_begin, line_end, num_skips, skip_window):
     assert num_skips <= 2 * skip_window
     UNK_idx = vocab_2_idx["UNK"]
+    global line_idx,word_idx
+    if line_idx < len(q_sents):
+       line_idx = 0 
     batch_list = []
     label_list = []
     #根据指定的行号从q和a的sentence中取出需要的batch
-    for line_idx in range(line_begin,line_end):
-        for line_type in range(0,2):
-            if line_type==1:
-                query_list = q_sents[line_idx]
-            else:
-                query_list = a_sents[line_idx]
-
-            for idx in range(len(query_list)):
-                if query_list[idx] != UNK_idx:
+    while len(batch_list)< batch_size:
+        query_list = qa_sents[line_idx]         
+        for idx in range(len(query_list)):
+            if query_list[idx] != UNK_idx:
                     input_id = query_list[idx]
                     target_window = np.random.randint(1, skip_window + 1)
                     start = max(0, idx - target_window)
                     end = min(len(query_list) - 1, idx + target_window)
-                for i in range(start, end):
-                    if idx != i:
-                        output_id = query_list[i]
-                        batch_list.append(input_id)
-                        label_list.append(output_id)
+                    for i in range(start, end):
+                        if idx != i:
+                            output_id = query_list[i]
+                            batch_list.append(input_id)
+                            label_list.append(output_id)
     batch_len =len(batch_list)
-    batchs = np.ndarray(test_batch, shape=(test_batch_len), dtype=np.int32)
-    labels = np.ndarray(test_label, shape=(test_batch_len, 1), dtype=np.int32)
+    batchs = np.array(batch_list, dtype=np.int32)
+    labels = np.array(label_list, dtype=np.int32)
+    labels = labels.reshape((batch_len,1))
     return batch_len, batchs,labels
 
 test_batch_len, test_batch, test_label= generate_batch(line_begin=0, line_end=2,  num_skips=2, skip_window=1)
-for i in range(len(test_batch)):
+for i in range(test_batch_len):
     print(test_batch[i], idx_2_vocab[test_batch[i]],
           '->', test_label[i, 0], idx_2_vocab[test_label[i, 0]])
 
@@ -180,26 +182,29 @@ for i in range(len(test_batch)):
 @desc: 从配置中读取，并构建图所需的元素
 '''
 batch_size = get_config_int("word2vec", "batch_size")
-embedding_size = get_config_int("word2vec", "embedding_size")  # Dimension of the embedding vector.
-skip_window = get_config_int("word2vec", "skip_window")  # How many words to consider left and right.
-num_skips = get_config_int("word2vec", "num_skips")  # How many times to reuse an input to generate a label.
+embedding_size = get_config_int("word2vec", "embedding_size")  
+skip_window = get_config_int("word2vec", "skip_window")  
+num_skips = get_config_int("word2vec", "num_skips")  
 
-valid_size = get_config_int("word2vec", "valid_size")  # Random set of words to evaluate similarity on.
-valid_window = get_config_int("word2vec", "valid_window")  # Only pick dev samples in the head of the distribution.
+valid_size = get_config_int("word2vec", "valid_size")  
+valid_window = get_config_int("word2vec", "valid_window")
 valid_examples = np.random.choice(valid_window, valid_size, replace=False)
-num_sampled = get_config_int("word2vec", "num_sampled")  # Number of negative examples to sample.
+num_sampled = get_config_int("word2vec", "num_sampled")  
+input_size = batch_size
 
 graph = tf.Graph()
 with graph.as_default():
     with tf.device('/gpu:0'):
+        train_inputs = tf.placeholder(tf.int32, shape=[None,1])
+        train_labels = tf.placeholder(tf.int32, shape=[None, 1])
+        valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
         embeddings = tf.Variable(
-            tf.random_uniform([vocabulary_size, embedding_size], -1.0, 1.0), name="embeddings")
-        embed = tf.nn.embedding_lookup(embeddings, train_inputs)
+            tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0), name="embeddings")
+        embed = tf.nn.embedding_lookup(embeddings, tf.transpose(train_inputs))
 
-        nce_weights = tf.Variable(
-            tf.truncated_normal([vocabulary_size, embedding_size],
+        nce_weights = tf.Variable(tf.truncated_normal([vocab_size, embedding_size],
                                 stddev=1.0 / math.sqrt(embedding_size)), name="nec_weight")
-        nce_biases = tf.Variable(tf.zeros([vocabulary_size]), name="nce_biases")
+        nce_biases = tf.Variable(tf.zeros([vocab_size]), name="nce_biases")
 
     loss = tf.reduce_mean(
         tf.nn.nce_loss(weights=nce_weights,
@@ -207,7 +212,7 @@ with graph.as_default():
                        labels=train_labels,
                        inputs=embed,
                        num_sampled=num_sampled,
-                       num_classes=vocabulary_size))
+                       num_classes=vocab_size))
 
     optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
 
@@ -241,28 +246,27 @@ with tf.Session(graph=graph) as session:
     summary_writer = tf.summary.FileWriter(log_dir, session.graph)
 
     average_loss = 0
+    begin_line = 0
+    begin_idx = 0
+    line_num = len(q_sents)
     for step in xrange(num_steps):
-        begin_idx = step * batch_size % batch_nums
-        end_idx = (step + 1) * batch_size % batch_nums
         batch_inputs = []
         batch_labels = []
-        if end_idx < begin_idx:
-            inputs,labels = generate_batch(0, end_idx, num_skips, skip_window)
+        if begin_idx >= line_num:
+            input_len,inputs,labels = generate_batch(batch_size, num_skips, skip_window)
             batch_inputs.extend(inputs)
             batch_labels.extend(labels)
-            inputs, labels = generate_batch(begin_idx, batch_nums, num_skips, skip_window)
+            input_len,inputs, labels = generate_batch(begin_idx, batch_nums, num_skips, skip_window)
             batch_inputs.extend(inputs)
             batch_labels.extend(labels)
         else:
-            inputs, labels = generate_batch(begin_idx, end_idx, num_skips, skip_window)
+            input_len,inputs, labels = generate_batch(begin_idx, end_idx, num_skips, skip_window)
             batch_inputs.extend(inputs)
             batch_labels.extend(labels)
-
+        global input_size
         input_size =len(batch_labels)
-        train_inputs = tf.placeholder(tf.int32, shape=[input_size])
-        train_labels = tf.placeholder(tf.int32, shape=[input_size, 1])
         valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
-        feed_dict = {train_inputs: batch_inputs, train_labels: batch_labels}
+        feed_dict = {train_inputs: tf.transpose(batch_inputs), train_labels: batch_labels}
         tf.summary.scalar('loss',average_loss)
         _, loss_val = session.run([optimizer, loss], feed_dict=feed_dict)
         average_loss += loss_val
