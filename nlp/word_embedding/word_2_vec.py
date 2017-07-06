@@ -74,7 +74,7 @@ def read_raw_words():
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
 def build_dict(freq=3, del_threshold=0.95):
-    #read_raw_words()
+    read_raw_words()
     raw_words_file = open(get_config("word2vec", "raw_words_file"),"rb")
     raw_words = pickle.load(raw_words_file)
     raw_words_file.close()
@@ -96,9 +96,9 @@ def build_dict(freq=3, del_threshold=0.95):
     print("Total words:{}".format(len(raw_words)))
     print("Unique words:{}".format(len(train_words)))
     print("Trimed words:{}".format(len(trimed_dict)))
-    return len(vocab_2_idx), vocab_2_idx, idx_2_vocab, trimed_dict
+    return  vocab_2_idx, idx_2_vocab, trimed_dict
 
-vocabulary_size, vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
+vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
 
 batch, labels = generate_batch(0,10, num_skips=2, skip_window=1)
 for i in range(8):
@@ -154,8 +154,8 @@ def generate_batch(line_begin, line_end, num_skips, skip_window):
     label_list = []
     #根据指定的行号从q和a的sentence中取出需要的batch
     for line_idx in range(line_begin,line_end):
-        for i  in range(0,2):
-            if i=1:
+        for line_type in range(0,2):
+            if line_type==1:
                 query_list = q_sents[line_idx]
             else:
                 query_list = a_sents[line_idx]
@@ -171,7 +171,7 @@ def generate_batch(line_begin, line_end, num_skips, skip_window):
                         output_id = query_list[i]
                         batch_list.append(input_id)
                         label_list.append(output_id)
-    return batch_list，label_list
+    return batch_list,label_list
 
 
 batch, labels = generate_batch(batch_size=8, num_skips=2, skip_window=1)
