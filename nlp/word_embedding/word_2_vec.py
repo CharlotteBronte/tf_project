@@ -166,10 +166,13 @@ def generate_batch(line_begin, line_end, num_skips, skip_window):
                         output_id = query_list[i]
                         batch_list.append(input_id)
                         label_list.append(output_id)
-    return batch_list,label_list
+    batch_len =len(batch_list)
+    batchs = np.ndarray(test_batch, shape=(test_batch_len), dtype=np.int32)
+    labels = np.ndarray(test_label, shape=(test_batch_len, 1), dtype=np.int32)
+    return batch_len, batchs,labels
 
 
-test_batch, test_label= generate_batch(line_begin=0, line_end=2,  num_skips=2, skip_window=1)
+test_batch_len, test_batch, test_label= generate_batch(line_begin=0, line_end=2,  num_skips=2, skip_window=1)
 for i in range(len(test_batch)):
     print(test_batch[i], idx_2_vocab[batch[i]],
           '->', labels[i, 0], idx_2_vocab[labels[i, 0]])
