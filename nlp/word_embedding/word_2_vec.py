@@ -93,7 +93,10 @@ def build_dict(freq=3, del_threshold=0.95):
     raw_words_file = open(get_config("word2vec", "raw_words_file"),"rb")
     raw_words = pickle.load(raw_words_file)
     raw_words_file.close()
-    print("读取文件成功，总词表长度为{0}".format(len(raw_words)))
+    stop_words_file = open(get_config("word2vec", "stop_words_file"),"rb")
+    stop_words = stop_words_file.readlines()
+    stop_words_file.close() 
+    print("读取文件成功，总词表长度为{0}, 停用词表长度为{1}".format(len(raw_words),len(stop_words)))
 
     word_counts = Counter(raw_words)
     # 计算总词频
@@ -208,7 +211,6 @@ with graph.as_default():
             tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0), name="embeddings")
         embed = tf.nn.embedding_lookup(embeddings, train_inputs)
 
-
         nce_weights = tf.Variable(tf.truncated_normal([vocab_size, embedding_size],
                                 stddev=1.0 / math.sqrt(embedding_size)), name="nec_weight")
         nce_biases = tf.Variable(tf.zeros([vocab_size]), name="nce_biases")
@@ -221,15 +223,49 @@ with graph.as_default():
                        num_sampled=num_sampled,
                        num_classes=vocab_size))
     loss_log = tf.summary.scalar('loss', loss)
+    biases_log = tf.summary.histogram("basis",nce_biases)
+    weight_log = tf.summary.histogram("weight",nce_weights)
     optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
     # 计算候选embedding的cosine相似度
     norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
+    norm_log = tf.summary.histogram("norm",norm)
     normalized_embeddings = embeddings / norm
     valid_embeddings = tf.nn.embedding_lookup(
-        normalized_embeddings, valid_dataset)
+    normalized_embeddings, valid_dataset)
     similarity = tf.matmul(
-        valid_embeddings, normalized_embeddings, transpose_b=True)
-    merged_summary_op = tf.summary.merge([loss_log])
+    valid_embeddings, normalized_embeddings, transpose_b=True)
+    merged_summary_op = tf.summary.merge([loss_log,weight_log,biases_log,norm_log])
+
+'''
+@desc.绘制图像存储到指定png文件
+'''
+def plot_with_labels(low_dim_embs, labels, filename,log_writer):
+    assert low_dim_embs.shape[0] >= len(labels), 'more labels than embeddings'
+    plt.figure()  # in inches
+    for i, label in enumerate(labels):
+        x, y = low_dim_embs[i, :]
+        plt.scatter(x, y)
+        plt.annotate(label.encode("utf-8"),
+                     xy=(x, y),
+                     xytext=(5, 2),
+                     textcoords='offset points',
+                     ha='right',
+                     va='bottom', fontproperties=myfont)
+
+    plt.savefig(filename)
+    file = open(filename, 'rb')
+    data = file.read()
+    file.close()
+    # 图片处理
+    image = tf.image.decode_png(data, channels=4)
+    image = tf.expand_dims(image, 0)
+   
+    # 添加到日志中
+    summary_op = tf.summary.image("image1", image)
+    
+    # 运行并写入日志
+    summary = sess.run(summary_op)
+    log_writer.add_summary(summary)
 
 
 '''
@@ -287,71 +323,28 @@ with tf.Session(graph=graph) as session:
                     close_word = idx_2_vocab[nearest[k]]
                     log_str = '%s %s,' % (log_str, close_word)
                 print(log_str)
-    final_embeddings = tf.Variable(normalized_embeddings.eval(),"final_embeddings")
-    '''
-    print(final_embeddings.shape)
-    config = projector.ProjectorConfig()
-    embedding_proj = config.embeddings.add()
-    embedding_proj.tensor_name = final_embeddings.name
-    embedding_proj.metadata_path = get_config("word2vec", "embedding_proj_path")
-    embedding.sprite.image_path = get_config("word2vec", "embedding_proj_sprites")
-    projector.visualize_embeddings(summary_writer, config)
-    '''
+    final_embeddings = normalized_embeddings.eval()
+    try:
+        # pylint: disable=g-import-not-at-top
+        from sklearn.manifold import TSNE
+        import matplotlib as mpl
+
+        mpl.use('Agg')
+        from matplotlib.font_manager import *
+        import matplotlib.pyplot as plt
+
+        myfont = FontProperties(
+            fname="//data01/ai_rd/anaconda2/lib/python2.7/site-packages/matplotlib/mpl-data/fonts/ttf/msyh.ttf")
+        tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+
+        tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
+        plot_only =100 
+        low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
+        labels = [idx_2_vocab[i] for i in xrange(plot_only)]
+        embs_pic_path = get_config("word2vec", "embs_pic_path")
+        plot_with_labels(low_dim_embs, labels, embs_pic_path)
+    except ImportError:
+        print('Please install sklearn, matplotlib, and scipy to show embeddings.')
 
 
 
-'''
-@desc.绘制图像存储到指定png文件
-'''
-def plot_with_labels(low_dim_embs, labels, filename):
-    assert low_dim_embs.shape[0] >= len(labels), 'more labels than embeddings'
-    plt.figure()  # in inches
-    for i, label in enumerate(labels):
-        x, y = low_dim_embs[i, :]
-        plt.scatter(x, y)
-        plt.annotate(label.encode("utf-8"),
-                     xy=(x, y),
-                     xytext=(5, 2),
-                     textcoords='offset points',
-                     ha='right',
-                     va='bottom', fontproperties=myfont)
-
-    plt.savefig(filename)
-    # file = open('lyric_word_vec.png', 'rb')
-    # data = file.read()
-    # file.close()
-    # # 图片处理
-    # image = tf.image.decode_png(data, channels=4)
-    # image = tf.expand_dims(image, 0)
-    #
-    # # 添加到日志中
-    # sess = tf.Session()
-    # writer = tf.summary.FileWriter('logs')
-    # summary_op = tf.summary.image("image1", image)
-    #
-    # # 运行并写入日志
-    # summary = sess.run(summary_op)
-    # writer.add_summary(summary)
-
-
-try:
-    # pylint: disable=g-import-not-at-top
-    from sklearn.manifold import TSNE
-    import matplotlib as mpl
-
-    mpl.use('Agg')
-    from matplotlib.font_manager import *
-    import matplotlib.pyplot as plt
-
-    myfont = FontProperties(
-        fname="//data01/ai_rd/anaconda2/lib/python2.7/site-packages/matplotlib/mpl-data/fonts/ttf/msyh.ttf")
-    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-
-    tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-    plot_only =100 
-    low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
-    labels = [idx_2_vocab[i] for i in xrange(plot_only)]
-    embs_pic_path = get_config("word2vec", "embs_pic_path")
-    plot_with_labels(low_dim_embs, labels, embs_pic_path)
-except ImportError:
-    print('Please install sklearn, matplotlib, and scipy to show embeddings.')
