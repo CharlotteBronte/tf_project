@@ -337,10 +337,16 @@ with tf.Session(graph=graph) as session:
         file = open(embs_pic_path, 'rb')
         data = file.read()
         file.close()
+
         image = tf.image.decode_png(data, channels=4)
         image = tf.expand_dims(image, 0)
-        summary_img = tf.summary.image("image1", image)
-        summary_writer.add_summary(summary_img)
+
+        # 添加到日志中
+        summary_op = tf.summary.image("image1", image)
+
+        # 运行并写入日志
+        summary = session.run(summary_op)
+        summary_writer.add_summary(summary)
 
     except ImportError:
         print('Please install sklearn, matplotlib, and scipy to show embeddings.')
