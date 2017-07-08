@@ -62,7 +62,7 @@ def get_config_int(section, key):
 
 #从原始文件中得到词表并存储在csv文件中
 def read_raw_words():
-    raw_words = open(get_config("word2vec","train_data_file")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split)
+    raw_words = map(lambda x: x.strip(), open(get_config("word2vec","train_data_file")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split))
     raw_file = open(get_config("word2vec","raw_words_file"), 'wb')
     pickle.dump(raw_words, raw_file)
     raw_file.close()
@@ -88,7 +88,7 @@ save_step_num = get_config_int("word2vec", "save_step_num")
 @param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
-def build_dict(freq=3, del_threshold=0.95):
+def build_dict(freq=3, del_threshold=0.99):
     read_raw_words()
     raw_words_file = open(get_config("word2vec", "raw_words_file"),"rb")
     raw_words = pickle.load(raw_words_file)
@@ -134,9 +134,9 @@ def build_sent_file(qa_file_name, idx_file_name):
         if len(single_sent) != 2:
             continue;
         # list向量化
-        q_list.append(map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],
+        q_list.append(map(lambda x: vocab_2_idx["UNK"] if x.strip() in trimed_dictionary.keys() else vocab_2_idx[x],
                            single_sent[0].split(word_split)))
-        a_list.append(map(lambda x: vocab_2_idx["UNK"] if x in trimed_dictionary.keys() else vocab_2_idx[x],
+        a_list.append(map(lambda x: vocab_2_idx["UNK"] if x.strip() in trimed_dictionary.keys() else vocab_2_idx[x],
                           single_sent[1].split(word_split)))
     sent_vec_file = open(get_config("word2vec", "idx_file_name"), 'wb')
     all_sent_list = []
@@ -148,7 +148,7 @@ def build_sent_file(qa_file_name, idx_file_name):
     sent_vec_file.close()
 
 
-#build_sent_file(get_config("word2vec", "train_data_file"), get_config("word2vec", "idx_file_name"))
+build_sent_file(get_config("word2vec", "train_data_file"), get_config("word2vec", "idx_file_name"))
 idx_file = open(get_config("word2vec", "idx_file_name"), "rb")
 qa_sents = pickle.load(idx_file)
 idx_file.close();
@@ -171,11 +171,10 @@ def generate_batch(batch_size, num_skips, skip_window):
     #根据指定的行号从q和a的sentence中取出需要的batch
     while len(batch_list) < batch_size:
         global line_idx,word_idx
-        if line_idx >= all_line_num or word_idx>=len(qa_sents[line_idx]):
-            line_idx = 0 
-            word_idx = 0
-        query_list = qa_sents[line_idx]         
         line_idx +=1 
+        if line_idx >= all_line_num :
+            line_idx = 0 
+        query_list = qa_sents[line_idx]         
         for idx in range(word_idx,len(query_list)):
             if query_list[idx] != UNK_idx:
                     input_id = query_list[idx]
@@ -184,17 +183,20 @@ def generate_batch(batch_size, num_skips, skip_window):
                     end = min(len(query_list) - 1, idx + target_window)
                     for i in range(start, end):
                         if idx != i:
-                            if len(batch_list)==batch_size:
-                                #print("Generate batch size is {}".format(len(batch_list)))
-                                batchs = np.array(batch_list, dtype=np.int32)
-                                gatchs = batchs.reshape([batch_size])
-                                labels = np.array(label_list, dtype=np.int32)
-                                labels = labels.reshape([batch_size,1])
-                                word_idx = idx + 1
-                                return  batchs,labels
                             output_id = query_list[i]
                             batch_list.append(input_id)
                             label_list.append(output_id)
+                            if len(batch_list)== batch_size:
+                                #print("Generate batch size is {}".format(len(batch_list)))
+                                batchs = np.array(batch_list, dtype=np.int32)
+                                batchs = batchs.reshape([batch_size])
+                                labels = np.array(label_list, dtype=np.int32)
+                                labels = labels.reshape([batch_size,1])
+                                word_idx = idx + 1
+                                #print(batch_list)
+                                return  batchs,labels
+        if word_idx >=len(qa_sents[line_idx]):
+            word_idx = 0
 
 test_batch, test_label= generate_batch(batch_size, num_skips=2, skip_window=1)
 for i in range(10):
@@ -203,7 +205,7 @@ for i in range(10):
 
 graph = tf.Graph()
 with graph.as_default():
-    with tf.device('/gpu:0'):
+    with tf.device('/cpu:0'):
         train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
         train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
         valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
@@ -319,7 +321,7 @@ with tf.Session(graph=graph) as session:
         from sklearn.manifold import TSNE
         import matplotlib as mpl
 
-        mpl.use('Agg')
+        #mpl.use('Agg')
         from matplotlib.font_manager import *
         import matplotlib.pyplot as plt
 
@@ -328,7 +330,7 @@ with tf.Session(graph=graph) as session:
         tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
 
         tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-        plot_only = len(final_embeddings[:,0])
+        plot_only = 100
         low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
         labels = [idx_2_vocab[i] for i in xrange(plot_only)]
         embs_pic_path = get_config("word2vec", "embs_pic_path")
