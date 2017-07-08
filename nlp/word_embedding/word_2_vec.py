@@ -333,12 +333,14 @@ with tf.Session(graph=graph) as session:
         labels = [idx_2_vocab[i] for i in xrange(plot_only)]
         embs_pic_path = get_config("word2vec", "embs_pic_path")
         plot_with_labels(low_dim_embs, labels, embs_pic_path, summary_writer)
-        # 图片处理
+
+        file = open('tsne.png', 'rb')
+        data = file.read()
+        file.close()
         image = tf.image.decode_png(data, channels=4)
         image = tf.expand_dims(image, 0)
-        image_log = tf.summary.image("image1", image)
-        # 运行并写入日志
-        log_writer.add_summary(image_log)
+        summary_img = tf.summary.image("image1", image)
+        log_writer.add_summary(summary_img)
 
     except ImportError:
         print('Please install sklearn, matplotlib, and scipy to show embeddings.')
