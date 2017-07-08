@@ -105,8 +105,8 @@ def build_dict(freq=3, del_threshold=0.95):
     prob_drop = {w: 1 - np.sqrt(1e-5/f) for w, f in word_freq.items()}
    
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
-    train_words = [w for w in raw_words if(prob_drop[w]<del_threshold and word_counts[w]>freq)]
-    trimed_dict = {w:0 for w in raw_words if (prob_drop[w]>=del_threshold or word_counts[w]<=freq)}
+    train_words = [w for w in raw_words if(prob_drop[w]<del_threshold and word_counts[w]>freq and (w not in stop_words))]
+    trimed_dict = {w:0 for w in raw_words if (prob_drop[w]>=del_threshold or word_counts[w]<=freq or w in stop_words)}
     vocab = set(train_words)
     vocab.add("UNK")
     vocab_2_idx = {w: c for c, w in enumerate(vocab)}
@@ -203,7 +203,7 @@ for i in range(10):
 
 graph = tf.Graph()
 with graph.as_default():
-    with tf.device('/gpu:1'):
+    with tf.device('/gpu:0'):
         train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
         train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
         valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
@@ -262,10 +262,8 @@ def plot_with_labels(low_dim_embs, labels, filename,log_writer):
    
     # 添加到日志中
     summary_op = tf.summary.image("image1", image)
-    
     # 运行并写入日志
-    summary = sess.run(summary_op)
-    log_writer.add_summary(summary)
+    log_writer.add_summary(summary_op)
 
 
 '''
@@ -338,11 +336,11 @@ with tf.Session(graph=graph) as session:
         tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
 
         tsne = TSNE(perplexity=30, n_components=2, init='pca', n_iter=5000)
-        plot_only =100 
+        plot_only = len(final_embeddings[:,0])
         low_dim_embs = tsne.fit_transform(final_embeddings[:plot_only, :])
         labels = [idx_2_vocab[i] for i in xrange(plot_only)]
         embs_pic_path = get_config("word2vec", "embs_pic_path")
-        plot_with_labels(low_dim_embs, labels, embs_pic_path)
+        plot_with_labels(low_dim_embs, labels, embs_pic_path, summary_writer)
     except ImportError:
         print('Please install sklearn, matplotlib, and scipy to show embeddings.')
 

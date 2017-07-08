@@ -1,3 +1,3 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=0,1
+export CUDA_VISIBLE_DEVICES=2
 python word_2_vec.py word_embedding_test.ini
