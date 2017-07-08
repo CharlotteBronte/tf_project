@@ -340,7 +340,7 @@ with tf.Session(graph=graph) as session:
         image = tf.image.decode_png(data, channels=4)
         image = tf.expand_dims(image, 0)
         summary_img = tf.summary.image("image1", image)
-        log_writer.add_summary(summary_img)
+        summary_writer.add_summary(summary_img)
 
     except ImportError:
         print('Please install sklearn, matplotlib, and scipy to show embeddings.')
