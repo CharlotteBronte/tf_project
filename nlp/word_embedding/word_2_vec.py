@@ -256,14 +256,6 @@ def plot_with_labels(low_dim_embs, labels, filename,log_writer):
     file = open(filename, 'rb')
     data = file.read()
     file.close()
-    # 图片处理
-    image = tf.image.decode_png(data, channels=4)
-    image = tf.expand_dims(image, 0)
-   
-    # 添加到日志中
-    summary_op = tf.summary.image("image1", image)
-    # 运行并写入日志
-    log_writer.add_summary(summary_op)
 
 
 '''
@@ -341,6 +333,13 @@ with tf.Session(graph=graph) as session:
         labels = [idx_2_vocab[i] for i in xrange(plot_only)]
         embs_pic_path = get_config("word2vec", "embs_pic_path")
         plot_with_labels(low_dim_embs, labels, embs_pic_path, summary_writer)
+        # 图片处理
+        image = tf.image.decode_png(data, channels=4)
+        image = tf.expand_dims(image, 0)
+        image_log = tf.summary.image("image1", image)
+        # 运行并写入日志
+        log_writer.add_summary(image_log)
+
     except ImportError:
         print('Please install sklearn, matplotlib, and scipy to show embeddings.')
 
