@@ -334,7 +334,7 @@ with tf.Session(graph=graph) as session:
         embs_pic_path = get_config("word2vec", "embs_pic_path")
         plot_with_labels(low_dim_embs, labels, embs_pic_path, summary_writer)
 
-        file = open('tsne.png', 'rb')
+        file = open(embs_pic_path, 'rb')
         data = file.read()
         file.close()
         image = tf.image.decode_png(data, channels=4)
