@@ -1,6 +1,7 @@
 # nnlm-rnn实现的语言模型
 ## REquirements
 ## Usage
+* python(above 2.7)  script/lstm_nnlm.py  cofigs/nnlm_test.ini
 ## Custom
 ## To Do List
 ## Updata
