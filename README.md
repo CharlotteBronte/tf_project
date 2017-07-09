@@ -1,4 +1,4 @@
-# lucy的tensorflow相关项目汇总
+# tf_project-Lucy's all projects related to tensorflow 
 ## nlp
 * desc: 自然语言处理相关项目
 ## tf_notebook
