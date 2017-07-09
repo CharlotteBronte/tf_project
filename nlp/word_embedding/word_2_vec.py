@@ -88,21 +88,21 @@ save_step_num = get_config_int("word2vec", "save_step_num")
 @param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
-def build_dict(freq=3, del_threshold=0.99):
+def build_dict(freq=3, del_threshold=0.8):
     read_raw_words()
     raw_words_file = open(get_config("word2vec", "raw_words_file"),"rb")
     raw_words = pickle.load(raw_words_file)
     raw_words_file.close()
     stop_words_file = open(get_config("word2vec", "stop_words_file"),"rb")
-    stop_words = stop_words_file.readlines()
+    stop_words = set(stop_words_file.readlines())
     stop_words_file.close() 
-    print("读取文件成功，总词表长度为{0}, 停用词表长度为{1}".format(len(raw_words),len(stop_words)))
+    print("读取文件成功，总词表长度为{0}, 停用词表个数为{1}".format(len(raw_words),len(stop_words)))
 
     word_counts = Counter(raw_words)
     # 计算总词频
     total_count = len(raw_words)
     word_freq = {w: c / total_count for w, c in word_counts.items()}
-    prob_drop = {w: 1 - np.sqrt(1e-5/f) for w, f in word_freq.items()}
+    prob_drop = {w: 1 - np.sqrt(1e-4/f) for w, f in word_freq.items()}
    
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
     train_words = [w for w in raw_words if(prob_drop[w]<del_threshold and word_counts[w]>freq and (w not in stop_words))]
@@ -199,7 +199,7 @@ def generate_batch(batch_size, num_skips, skip_window):
             word_idx = 0
 
 test_batch, test_label= generate_batch(batch_size, num_skips=2, skip_window=1)
-for i in range(10):
+for i in range(batch_size):
     print(test_batch[i], idx_2_vocab[test_batch[i]],
           '->', test_label[i, 0], idx_2_vocab[test_label[i, 0]])
 
@@ -313,7 +313,7 @@ with tf.Session(graph=graph) as session:
                 log_str = 'Nearest to %s:' % valid_word
                 for k in xrange(top_k):
                     close_word = idx_2_vocab[nearest[k]]
-                    log_str = '%s %s,' % (log_str, close_word)
+                    log_str = '%s %s(%d):%f' % (log_str, close_word, nearest[k],-sim[i,k])
                 print(log_str)
     final_embeddings = normalized_embeddings.eval()
     try:
