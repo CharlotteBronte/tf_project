@@ -17,5 +17,5 @@
 * data: test and train data for nnlm model with chinese segmented qa | 所有的测试和训练数据（所有数据均为qa对并且是使用jieba分词的）
 
 ## Preference
-[NNLM](http://www.fit.vutbr.cz/~imikolov/rnnlm/thesis.pdf){:target="_blank"}
-[RNNLM Toolkit](http://www.fit.vutbr.cz/~imikolov/rnnlm/){:target="_blank"}
+[NNLM](http://www.fit.vutbr.cz/~imikolov/rnnlm/thesis.pdf)
+[RNNLM Toolkit](http://www.fit.vutbr.cz/~imikolov/rnnlm/)
