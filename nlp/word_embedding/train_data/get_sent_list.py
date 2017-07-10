@@ -33,8 +33,8 @@ def build_dict():
     word_freq = {w: c / total_count for w, c in word_counts.items()}
     prob_drop = {w: 1 - np.sqrt(1e-4 / f) for w, f in word_freq.items()}
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
-    train_words = map(lambda w: "UNK" if((word_counts[w] <= 3) or (w in stop_words) or（prob_drop[w]>=del_threadhold) else w, raw_words)
-    vocab_2_idx = dict{(w:id) for w,id in enumerate(set(train_words))}
+    train_words = map(lambda w: "UNK" if((word_counts[w] <= 3) or (w in stop_words) or (prob_drop[w]>=del_threadhold)) else w, raw_words)
+    vocab_2_idx ={w:i for w,i in enumerate(set(train_words))}
     #得到qa向量化以后的数据
     q_list=[[]]
     a_list=[[]]
@@ -57,5 +57,8 @@ def build_dict():
     print("Unique words:{}".format(len(vocab_2_idx)))
     print("Dump file is:{}".format(pickle_file))
 
+if len(sys.argv)!=5:
+	print("useage: python build_dict.py dict_word_file stop_word_file raw_qa_file pickle_file")
+	exit(1)
 build_dict()
 
