@@ -41,8 +41,6 @@ print("配置路径为:{}".format(config_path))
 @desc: 得到路径配置
 @format: [word2vec] train_data=xxxx
 '''
-
-
 def get_config(section, key):
     config = ConfigParser.ConfigParser()
     config.read(config_path)
@@ -53,8 +51,6 @@ def get_config(section, key):
 @desc: 得到路径配置
 @format: [word2vec] train_data=xxxx
 '''
-
-
 def get_config_int(section, key):
     config = ConfigParser.ConfigParser()
     config.read(config_path)
@@ -88,71 +84,18 @@ save_step_num = get_config_int("word2vec", "save_step_num")
 @param: freq:小于freq次数的词都会被删除
         del_threshold: 大于这个阈值的词会被作为停用词被删除
 '''
-def build_dict(freq=3, del_threshold=0.8):
-    read_raw_words()
-    raw_words_file = open(get_config("word2vec", "raw_words_file"),"rb")
-    raw_words = pickle.load(raw_words_file)
-    raw_words_file.close()
-    stop_words_file = open(get_config("word2vec", "stop_words_file"),"rb")
-    stop_words = set(stop_words_file.readlines())
-    stop_words_file.close() 
-    print("读取文件成功，总词表长度为{0}, 停用词表个数为{1}".format(len(raw_words),len(stop_words)))
+def get_pickle_file():
+    #read_raw_words()
+    pickle_file = open(get_config("word2vec", "pickle_file"),"rb")
+    idx_2_vocab = pickle.load(raw_words_file)
+    vocab_2_idx = {i,w for w,i in idx_2_vocab}
+    q_sents = pickle.load(pickle_file)
+    a_sents = pickle.load(pickle_file)
+    pickle_file.close()
+    print("读取文件成功，总词表长度为{0}, qa对个数为{1}".format(len(idx_2_vocab),len(q_sents)))
+    return  vocab_2_idx, idx_2_vocab, q_sents, a_sents
 
-    word_counts = Counter(raw_words)
-    # 计算总词频
-    total_count = len(raw_words)
-    word_freq = {w: c / total_count for w, c in word_counts.items()}
-    prob_drop = {w: 1 - np.sqrt(1e-4/f) for w, f in word_freq.items()}
-   
-    # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
-    train_words = [w for w in raw_words if(prob_drop[w]<del_threshold and word_counts[w]>freq and (w not in stop_words))]
-    trimed_dict = {w:0 for w in raw_words if (prob_drop[w]>=del_threshold or word_counts[w]<=freq or w in stop_words)}
-    vocab = set(train_words)
-    vocab.add("UNK")
-    vocab_2_idx = {w: c for c, w in enumerate(vocab)}
-    idx_2_vocab = {c: w for c, w in enumerate(vocab)}
-    print("Total words:{}".format(len(raw_words)))
-    print("Unique words:{}".format(len(train_words)))
-    print("Trimed words:{}".format(len(trimed_dict)))
-    return  len(vocab_2_idx),vocab_2_idx, idx_2_vocab, trimed_dict
-
-vocab_size, vocab_2_idx, idx_2_vocab, trimed_dictionary = build_dict()
-
-
-'''
-@desc: 将所有的原始数据idx化并存储
-@param: qa_file_name:对话数据文件路径
-        idx_file_name: 索引化后的文件路径
-'''
-def build_sent_file(qa_file_name, idx_file_name):
-    qa_sents = open(get_config("word2vec", "train_data_file")).readline().split(line_split)
-    q_list = []
-    a_list = []
-    # 对每个qasent进行分词然后逐个得到batch信息
-    for sent_pair in qa_sents:
-        single_sent= sent_pair.split(qa_split)
-        if len(single_sent) != 2:
-            continue;
-        # list向量化
-        q_list.append(map(lambda x: vocab_2_idx["UNK"] if x.strip() in trimed_dictionary.keys() else vocab_2_idx[x],
-                           single_sent[0].split(word_split)))
-        a_list.append(map(lambda x: vocab_2_idx["UNK"] if x.strip() in trimed_dictionary.keys() else vocab_2_idx[x],
-                          single_sent[1].split(word_split)))
-    sent_vec_file = open(get_config("word2vec", "idx_file_name"), 'wb')
-    all_sent_list = []
-    all_sent_list.extend(q_list)
-    all_sent_list.extend(a_list)
-    pickle.dump(all_sent_list, sent_vec_file)
-    pickle.dump(q_list, sent_vec_file)
-    pickle.dump(a_list, sent_vec_file)
-    sent_vec_file.close()
-
-
-build_sent_file(get_config("word2vec", "train_data_file"), get_config("word2vec", "idx_file_name"))
-idx_file = open(get_config("word2vec", "idx_file_name"), "rb")
-qa_sents = pickle.load(idx_file)
-idx_file.close();
-all_line_num = len(qa_sents)
+idx_2_vocab, vocab_2_idx, q_sents, a_sents, all_line_num = get_pickle_file()
 
 line_idx=0
 word_idx=0
@@ -173,8 +116,10 @@ def generate_batch(batch_size, num_skips, skip_window):
         global line_idx,word_idx
         line_idx +=1 
         if line_idx >= all_line_num :
-            line_idx = 0 
-        query_list = qa_sents[line_idx]         
+            line_idx = 0
+        query_list = []
+        query_list.extend(q_sents[line_idx])
+        query_list.extend(a_sents[line_idx])
         for idx in range(word_idx,len(query_list)):
             if query_list[idx] != UNK_idx:
                     input_id = query_list[idx]
