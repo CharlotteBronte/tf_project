@@ -88,7 +88,7 @@ def get_pickle_file():
     #read_raw_words()
     pickle_file = open(get_config("word2vec", "pickle_file"),"rb")
     idx_2_vocab = pickle.load(raw_words_file)
-    vocab_2_idx = {i,w for w,i in idx_2_vocab}
+    vocab_2_idx = {i:w for w,i in idx_2_vocab}
     q_sents = pickle.load(pickle_file)
     a_sents = pickle.load(pickle_file)
     pickle_file.close()

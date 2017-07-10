@@ -27,7 +27,7 @@ word_split=""
 
 def build_dict():
     word_freq=1
-    del_threadhold=1.0
+    del_prob=1.0
     raw_words_file=sys.argv[1]
     stop_word_file=sys.argv[2]
     raw_qa_file=sys.argv[3]
@@ -42,7 +42,7 @@ def build_dict():
     word_freq = {w: c / total_count for w, c in word_counts.items()}
     prob_drop = {w: 1 - np.sqrt(1e-5 / f) for w, f in word_freq.items()}
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
-    train_words = map(lambda w: "UNK" if((word_counts[w] <= word_freq) or (w in stop_words) or (prob_drop[w]>=del_threadhold)) else w, raw_words)
+    train_words = map(lambda w: "UNK" if((word_counts[w] <= word_freq) or (w in stop_words) or (prob_drop[w]>=del_prob)) else w, raw_words)
     vocab_2_idx ={w:i for i,w in enumerate(set(train_words))}
     #得到qa向量化以后的数据
     q_list=[[]]
