@@ -1,0 +1,6 @@
+model_checkpoint_path: "word2vec_qa.ckpt-570"
+all_model_checkpoint_paths: "word2vec_qa.ckpt-530"
+all_model_checkpoint_paths: "word2vec_qa.ckpt-540"
+all_model_checkpoint_paths: "word2vec_qa.ckpt-550"
+all_model_checkpoint_paths: "word2vec_qa.ckpt-560"
+all_model_checkpoint_paths: "word2vec_qa.ckpt-570"
