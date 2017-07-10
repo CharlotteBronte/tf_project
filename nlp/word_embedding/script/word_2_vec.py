@@ -86,16 +86,17 @@ save_step_num = get_config_int("word2vec", "save_step_num")
 '''
 def get_pickle_file():
     #read_raw_words()
-    pickle_file = open(get_config("word2vec", "pickle_file"),"rb")
-    idx_2_vocab = pickle.load(raw_words_file)
-    vocab_2_idx = {i:w for w,i in idx_2_vocab}
+    pickle_file = open(get_config("word2vec", "pickle_path"),"rb")
+    vocab_2_idx = pickle.load(pickle_file)
+    print(vocab_2_idx)
+    idx_2_vocab = {i:w for w,i in vocab_2_idx.items()}
     q_sents = pickle.load(pickle_file)
     a_sents = pickle.load(pickle_file)
     pickle_file.close()
     print("读取文件成功，总词表长度为{0}, qa对个数为{1}".format(len(idx_2_vocab),len(q_sents)))
-    return  vocab_2_idx, idx_2_vocab, q_sents, a_sents
+    return  vocab_2_idx, idx_2_vocab, q_sents, a_sents, len(q_sents)
 
-idx_2_vocab, vocab_2_idx, q_sents, a_sents, all_line_num = get_pickle_file()
+vocab_2_idx, idx_2_vocab, q_sents, a_sents, all_line_num = get_pickle_file()
 
 line_idx=0
 word_idx=0
@@ -140,7 +141,7 @@ def generate_batch(batch_size, num_skips, skip_window):
                                 word_idx = idx + 1
                                 #print(batch_list)
                                 return  batchs,labels
-        if word_idx >=len(qa_sents[line_idx]):
+        if word_idx >= all_line_num:
             word_idx = 0
 
 test_batch, test_label= generate_batch(batch_size, num_skips=2, skip_window=1)
