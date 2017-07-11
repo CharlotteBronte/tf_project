@@ -26,6 +26,10 @@ import pickle
 reload(sys)
 sys.setdefaultencoding("utf-8")
 
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+import tensorflow as tf
+
 import numpy as np
 from six.moves import urllib
 from six.moves import xrange  # pylint: disable=redefined-builtin
@@ -36,6 +40,7 @@ line_split = ""
 qa_split = ""
 word_split = ""
 config_path = sys.argv[1]
+
 print("配置路径为:{}".format(config_path))
 '''
 @desc: 得到路径配置
@@ -46,7 +51,6 @@ def get_config(section, key):
     config.read(config_path)
     return config.get(section, key)
 
-
 '''
 @desc: 得到路径配置
 @format: [word2vec] train_data=xxxx
@@ -56,6 +60,7 @@ def get_config_int(section, key):
     config.read(config_path)
     return config.getint(section, key)
 
+IS_DEBUG=get_config_int("word2vec","debug")
 
 '''
 @desc: 从配置中读取，并构建图所需的元素
@@ -124,15 +129,18 @@ def generate_batch(batch_size, num_skips, skip_window):
                             batch_list.append(input_id)
                             label_list.append(output_id)
                             if len(batch_list)== batch_size:
-                                print("Generate batch size is {}".format(len(batch_list)))
+				if IS_DEBUG==True:
+				    print("Generate batch size is {}".format(len(batch_list)))
                                 batchs = np.array(batch_list, dtype=np.int32)
                                 batchs = batchs.reshape([batch_size])
                                 labels = np.array(label_list, dtype=np.int32)
                                 labels = labels.reshape([batch_size,1])
                                 word_idx = idx + 1
-                                print(batch_list)
+				if IS_DEBUG==True:
+				    print("Generate batch size is {}".format(len(batch_list)))
+                                    print(batch_list)
                                 return  batchs,labels
-        if word_idx >= all_line_num:
+        if word_idx >= len(query_list):
             word_idx = 0
 
 test_batch, test_label= generate_batch(batch_size, num_skips=2, skip_window=1)
