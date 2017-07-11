@@ -56,14 +56,6 @@ def get_config_int(section, key):
     config.read(config_path)
     return config.getint(section, key)
 
-#从原始文件中得到词表并存储在csv文件中
-def read_raw_words():
-    raw_words = map(lambda x: x.strip(), open(get_config("word2vec","train_data_file")).readline().replace(qa_split, word_split).replace(line_split, word_split).split(word_split))
-    raw_file = open(get_config("word2vec","raw_words_file"), 'wb')
-    pickle.dump(raw_words, raw_file)
-    raw_file.close()
-    print("Raw words:{}".format(len(raw_words)))
-
 
 '''
 @desc: 从配置中读取，并构建图所需的元素
@@ -88,18 +80,15 @@ def get_pickle_file():
     #read_raw_words()
     pickle_file = open(get_config("word2vec", "pickle_path"),"rb")
     vocab_2_idx = pickle.load(pickle_file)
-    print(vocab_2_idx)
     idx_2_vocab = {i:w for w,i in vocab_2_idx.items()}
     q_sents = pickle.load(pickle_file)
     a_sents = pickle.load(pickle_file)
     pickle_file.close()
     print("读取文件成功，总词表长度为{0}, qa对个数为{1}".format(len(idx_2_vocab),len(q_sents)))
-    return  vocab_2_idx, idx_2_vocab, q_sents, a_sents, len(q_sents)
+    return len(vocab_2_idx), vocab_2_idx, idx_2_vocab, q_sents, a_sents, len(q_sents)
 
-vocab_2_idx, idx_2_vocab, q_sents, a_sents, all_line_num = get_pickle_file()
+vocab_size,vocab_2_idx, idx_2_vocab, q_sents, a_sents, all_line_num = get_pickle_file()
 
-line_idx=0
-word_idx=0
 '''
 @desc: 从qa文件的每行中，在windowsize的窗口内随机产生batch数据
 @param: line_begin: 开始采样的句子位置
@@ -107,6 +96,8 @@ word_idx=0
         num_skips:每个词的重用次数，取决于window的大小
         skip_window: 采样词的左右窗口大小（即决定了进行几gram的采样)skip_windows*2=num_skips
 '''
+line_idx=0
+word_idx=0
 def generate_batch(batch_size, num_skips, skip_window):
     assert num_skips <= 2 * skip_window
     UNK_idx = vocab_2_idx["UNK"]
@@ -133,13 +124,13 @@ def generate_batch(batch_size, num_skips, skip_window):
                             batch_list.append(input_id)
                             label_list.append(output_id)
                             if len(batch_list)== batch_size:
-                                #print("Generate batch size is {}".format(len(batch_list)))
+                                print("Generate batch size is {}".format(len(batch_list)))
                                 batchs = np.array(batch_list, dtype=np.int32)
                                 batchs = batchs.reshape([batch_size])
                                 labels = np.array(label_list, dtype=np.int32)
                                 labels = labels.reshape([batch_size,1])
                                 word_idx = idx + 1
-                                #print(batch_list)
+                                print(batch_list)
                                 return  batchs,labels
         if word_idx >= all_line_num:
             word_idx = 0
@@ -151,7 +142,7 @@ for i in range(batch_size):
 
 graph = tf.Graph()
 with graph.as_default():
-    for d in ['/gpu:2', '/gpu:3']:
+    for d in ['/cpu:0']:
         with tf.device(d):
             train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
             train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])

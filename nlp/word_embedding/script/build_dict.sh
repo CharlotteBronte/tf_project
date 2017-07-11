@@ -13,7 +13,7 @@ if [ $# != 1 ];then
 echo "useage sh build_dict.sh seg_qa_file" 
 exit 1
 fi
-data_root="./data"
+data_root="./data_dir"
 script_root="./script"
 raw_file=$1
 awk '{printf $0""}' $raw_file |sed 's///g' | awk -F"" '{for(i=1;i<=NF;i++){print $i}}'|sed 's/\s\+//g' |sort  > $1.words 

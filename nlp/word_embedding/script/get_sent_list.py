@@ -26,7 +26,7 @@ word_split=""
 
 
 def build_dict():
-    word_freq=1
+    word_freq=0
     del_prob=1.0
     raw_words_file=sys.argv[1]
     stop_word_file=sys.argv[2]
@@ -35,15 +35,15 @@ def build_dict():
 
     stop_words = set(open(stop_word_file).readlines())
     raw_words = [w.strip() for w in open(raw_words_file).readlines()]
-    print("Raw words:{}".format(len(raw_words)))
     word_counts = Counter(raw_words)
     # 计算总词频
     total_count = len(raw_words)
-    word_freq = {w: c / total_count for w, c in word_counts.items()}
-    prob_drop = {w: 1 - np.sqrt(1e-5 / f) for w, f in word_freq.items()}
+    word_freq = {w: float(c)/total_count for w, c in word_counts.items()}
+    prob_drop = {w: 1 - np.sqrt(1e-5/f) for w, f in word_freq.items()}
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
-    train_words = map(lambda w: "UNK" if((word_counts[w] <= word_freq) or (w in stop_words) or (prob_drop[w]>=del_prob)) else w, raw_words)
-    vocab_2_idx ={w:i for i,w in enumerate(set(train_words))}
+    train_words = ["UNK"]
+    train_words.extend(set([w.strip()for w in raw_words  if((word_counts[w]> word_freq)or (prob_drop[w]<del_prob) or (w.strip() not in stop_words))]) )
+    vocab_2_idx ={w:i for i,w in enumerate(train_words)}
     #得到qa向量化以后的数据
     q_list=[[]]
     a_list=[[]]
@@ -63,7 +63,7 @@ def build_dict():
     pickle.dump(q_list, pick)
     pickle.dump(a_list, pick)
     pick.close()
-    print("Total words:{}".format(len(train_words)))
+    print("Total words:{}".format(len(raw_words)))
     print("Unique words:{}".format(len(vocab_2_idx)))
     print("Dump file is:{}".format(pickle_file))
 
