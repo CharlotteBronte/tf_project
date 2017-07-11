@@ -7,9 +7,9 @@ export CUDA_VISIBLE_DEVICES=0,1
 #####################################################################
 
 SCRIPT="./script"
-DATA="./data"
+DATA="./data_dir"
 CONFIG="./configs"
-sh $SCRIPT/build_dict.sh  $DATA/test/seg_qa
+#sh $SCRIPT/build_dict.sh  $DATA/test/seg_qa
 python $SCRIPT/word_2_vec.py $CONFIG/word_embedding_test.ini
 
 #####################################################################
