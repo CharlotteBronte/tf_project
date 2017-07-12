@@ -25,8 +25,8 @@ qa_split=""
 word_split=""
 
 def build_dict():
-    drop_freq=5
-    del_threadhold=0.8
+    drop_freq=1
+    del_threadhold=0.98
     raw_words_file=sys.argv[2]
     stop_word_file=sys.argv[3]
     pickle_file=sys.argv[4]
