@@ -9,6 +9,21 @@
 ## @param:  
 ## @return:
 #####################################################################
+if [ $# != 2 ];then
+echo "useage sh build_dict.sh seg_qa_file seg_qa_id_file" 
+exit 1
+fi
 raw_file=$1
-awk '{printf $0""}' $raw_file |sed 's///g' | awk -F"" '{for(i=1;i<=NF;i++){print $i}}'|sed 's/\s\+//g' |sort  > $1.words 
-#pyhton get_sent_list.py $1  $1.sents
+out_file=$2
+rm -rf tmp_dir 
+mkdir tmp_dir 
+all_size=`wc -l $1|cut -d' ' -f1`
+echo $all_size
+batch_size=$(($all_size/32))
+for idx in {0..31}
+do
+idx_plus=$(($idx+1))
+head -n $(($idx_plus*$batch_size))   $1| tail -n $(($idx*$batch_size)) > tmp_dir/$2_test.$idx
+python get_sent_list.py $1.words stop_words  tmp_dir/$2_test.$idx  >tmp_dir/$2.$idx &
+done
+head -n $all_size   $1| tail -n $((31*$batch_size))> tmp_dir/$2_test.$idx &
