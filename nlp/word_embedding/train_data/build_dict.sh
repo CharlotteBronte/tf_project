@@ -20,10 +20,11 @@ mkdir tmp_dir
 all_size=`wc -l $1|cut -d' ' -f1`
 echo $all_size
 batch_size=$(($all_size/32))
+#python get_sent_list.py dict $1.words stop_words $1.pickle
 for idx in {0..31}
 do
 idx_plus=$(($idx+1))
 head -n $(($idx_plus*$batch_size))   $1| tail -n $(($idx*$batch_size)) > tmp_dir/$2_test.$idx
-python get_sent_list.py $1.words stop_words  tmp_dir/$2_test.$idx  >tmp_dir/$2.$idx &
+python get_sent_list.py list $1.pickle tmp_dir/$2_test.$idx  >tmp_dir/$2.$idx &
 done
 head -n $all_size   $1| tail -n $((31*$batch_size))> tmp_dir/$2_test.$idx &
