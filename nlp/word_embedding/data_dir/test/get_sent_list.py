@@ -41,7 +41,7 @@ def build_dict():
     prob_drop = {w: 1 - np.sqrt(1e-5 / f) for w, f in word_freq.items()}
     # 将低频和停用词都剔除成为训练数据，被剔除的使用UNK做平滑
     train_words = map(lambda w: "UNK" if((word_counts[w] <= drop_freq) or (w in stop_words) or (prob_drop[w]>=del_threadhold)) else w, word_counts.keys())
-    vocab_2_idx ={w:i for i,w in enumerate(train_words)}
+    vocab_2_idx ={w:i for i,w in enumerate(set(train_words))}
     print("unique words:{}".format(len(vocab_2_idx)))
     pick = open(pickle_file,"wb")
     pickle.dump(vocab_2_idx, pick) 
@@ -52,6 +52,7 @@ def build_list():
     pickle_file = sys.argv[2] 
     pk_file = open(pickle_file, 'rb')
     vocab_2_idx = pickle.load(pk_file)
+    print("vocab_size:{0}".format(len(vocab_2_idx)))
     pk_file.close()
     raw_qa_file=sys.argv[3]
 

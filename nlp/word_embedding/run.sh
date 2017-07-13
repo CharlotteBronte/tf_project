@@ -1,5 +1,5 @@
 #!/bin/bash
-export CUDA_VISIBLE_DEVICES=1
+export CUDA_VISIBLE_DEVICES=0,1
 
 #####################################################################
 ##测试数据
@@ -9,7 +9,9 @@ export CUDA_VISIBLE_DEVICES=1
 SCRIPT="./script"
 DATA="./data_dir"
 CONFIG="./configs"
-sh $SCRIPT/build_dict.sh  $DATA/test/seg_qa
+cd $DATA/test
+sh build_dict.sh  seg_qa test
+cd -
 python $SCRIPT/word_2_vec.py $CONFIG/word_embedding_test.ini
 
 #####################################################################

@@ -86,13 +86,12 @@ def get_pickle_file():
     pickle_file = open(get_config("word2vec", "pickle_path"),"rb")
     vocab_2_idx = pickle.load(pickle_file)
     idx_2_vocab = {i:w for w,i in vocab_2_idx.items()}
-    q_sents = pickle.load(pickle_file)
-    a_sents = pickle.load(pickle_file)
     pickle_file.close()
-    print("读取文件成功，总词表长度为{0}, qa对个数为{1}".format(len(idx_2_vocab),len(q_sents)))
-    return len(vocab_2_idx), vocab_2_idx, idx_2_vocab, q_sents, a_sents, len(q_sents)
+    qa_sents = open(get_config("word2vec","qa_list_file")).readlines()
+    print("读取文件成功，总词表长度为{0}, 句子个数为{1}".format(len(idx_2_vocab),len(qa_sents)))
+    return len(vocab_2_idx), vocab_2_idx, idx_2_vocab,qa_sents, len(qa_sents)
 
-vocab_size,vocab_2_idx, idx_2_vocab, q_sents, a_sents, all_line_num = get_pickle_file()
+vocab_size,vocab_2_idx, idx_2_vocab, qa_sents, all_line_num = get_pickle_file()
 
 '''
 @desc: 从qa文件的每行中，在windowsize的窗口内随机产生batch数据
@@ -115,8 +114,7 @@ def generate_batch(batch_size, num_skips, skip_window):
         if line_idx >= all_line_num :
             line_idx = 0
         query_list = []
-        query_list.extend(q_sents[line_idx])
-        query_list.extend(a_sents[line_idx])
+        query_list.extend(qa_sents[line_idx].split(word_split))
         for idx in range(word_idx,len(query_list)):
             if query_list[idx] != UNK_idx:
                     input_id = query_list[idx]
@@ -150,7 +148,7 @@ for i in range(batch_size):
 
 graph = tf.Graph()
 with graph.as_default():
-    for d in ['/gpu:0']:
+    for d in ['/cpu:0']:
         with tf.device(d):
             train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
             train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])

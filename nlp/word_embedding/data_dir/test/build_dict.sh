@@ -15,13 +15,14 @@ exit 1
 fi
 raw_file=$1
 out_file=$2
-all_size=`wc -l $1|cut -d' ' -f1`
-echo $all_size
-batch_size=$(($all_size/32))
+rm $1.pickle
 python get_sent_list.py dict $1.words stop_words $1.pickle
 python get_sent_list.py list $1.pickle $1 >$1.qa_list
 
 if false;then
+all_size=`wc -l $1|cut -d' ' -f1`
+echo $all_size
+batch_size=$(($all_size/32))
 rm -rf tmp_dir 
 mkdir tmp_dir 
 for idx in {0..31}
