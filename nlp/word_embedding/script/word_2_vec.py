@@ -148,7 +148,7 @@ for i in range(batch_size):
 
 graph = tf.Graph()
 with graph.as_default():
-    for d in ['/cpu:0']:
+    for d in ['/gpu:0']:
         with tf.device(d):
             train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
             train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
@@ -185,7 +185,7 @@ with graph.as_default():
 '''
 @desc.绘制图像存储到指定png文件
 '''
-def plot_with_labels(low_dim_embs, labels, filename,log_writer):
+def plot_with_labels(low_dim_embs, labels, filename):
     assert low_dim_embs.shape[0] >= len(labels), 'more labels than embeddings'
     plt.figure()  # in inches
     for i, label in enumerate(labels):
