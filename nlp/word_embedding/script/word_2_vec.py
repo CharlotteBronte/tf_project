@@ -148,39 +148,38 @@ for i in range(batch_size):
 
 graph = tf.Graph()
 with graph.as_default():
-    for d in ['/cpu:0']:
-        with tf.device(d):
-            train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
-            train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
-            valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
-            embeddings = tf.Variable(
+    with tf.device('/gpu:0')
+        train_inputs = tf.placeholder(tf.int32, shape=[batch_size])
+        train_labels = tf.placeholder(tf.int32, shape=[batch_size, 1])
+        valid_dataset = tf.constant(valid_examples, dtype=tf.int32)
+        embeddings = tf.Variable(
                 tf.random_uniform([vocab_size, embedding_size], -1.0, 1.0), name="embeddings")
-            embed = tf.nn.embedding_lookup(embeddings, train_inputs)
+        embed = tf.nn.embedding_lookup(embeddings, train_inputs)
 
-            nce_weights = tf.Variable(tf.truncated_normal([vocab_size, embedding_size],
+        nce_weights = tf.Variable(tf.truncated_normal([vocab_size, embedding_size],
                                     stddev=1.0 / math.sqrt(embedding_size)), name="nec_weight")
-            nce_biases = tf.Variable(tf.zeros([vocab_size]), name="nce_biases")
+        nce_biases = tf.Variable(tf.zeros([vocab_size]), name="nce_biases")
 
-        loss = tf.reduce_mean(
+    loss = tf.reduce_mean(
                 tf.nn.nce_loss(weights=nce_weights,
                            biases=nce_biases,
                            labels=train_labels,
                            inputs=embed,
                            num_sampled=num_sampled,
                            num_classes=vocab_size))
-        loss_log = tf.summary.scalar('loss', loss)
-        biases_log = tf.summary.histogram("basis",nce_biases)
-        weight_log = tf.summary.histogram("weight",nce_weights)
-        optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
-        # 计算候选embedding的cosine相似度
-        norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
-        norm_log = tf.summary.histogram("norm",norm)
-        normalized_embeddings = embeddings / norm
-        valid_embeddings = tf.nn.embedding_lookup(
-        normalized_embeddings, valid_dataset)
-        similarity = tf.matmul(
-        valid_embeddings, normalized_embeddings, transpose_b=True)
-        merged_summary_op = tf.summary.merge([loss_log,weight_log,biases_log,norm_log])
+    loss_log = tf.summary.scalar('loss', loss)
+    biases_log = tf.summary.histogram("basis",nce_biases)
+    weight_log = tf.summary.histogram("weight",nce_weights)
+    optimizer = tf.train.GradientDescentOptimizer(1.0).minimize(loss)
+    # 计算候选embedding的cosine相似度
+    norm = tf.sqrt(tf.reduce_sum(tf.square(embeddings), 1, keep_dims=True))
+    norm_log = tf.summary.histogram("norm",norm)
+    normalized_embeddings = embeddings / norm
+    valid_embeddings = tf.nn.embedding_lookup(
+    normalized_embeddings, valid_dataset)
+    similarity = tf.matmul(
+    valid_embeddings, normalized_embeddings, transpose_b=True)
+    merged_summary_op = tf.summary.merge([loss_log,weight_log,biases_log,norm_log])
 
 '''
 @desc.绘制图像存储到指定png文件
